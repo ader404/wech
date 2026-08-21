@@ -1,0 +1,419 @@
+import { Injectable, BadRequestException } from '@nestjs/common';
+import { PrismaService } from '../../prisma/prisma.service';
+import { CreateSaleDto } from './dto/create-sale.dto';
+import { AddPaymentDto } from './dto/add-payment.dto';
+import { NotificationsService } from '../notifications/notifications.service';
+import { PaginationDto, PaginatedResult } from '../../common/dto/pagination.dto';
+
+const SALE_INCLUDE = {
+  customer: true,
+  user: { select: { id: true, name: true, email: true } },
+  items: { include: { product: { include: { category: true } } } },
+  payments: true,
+  loan: true,  // NEW: Include linked loan for partial-payment sales
+};
+
+@Injectable()
+export class SalesService {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notifications: NotificationsService,
+  ) {}
+
+  async findAll(paginationDto?: PaginationDto): Promise<PaginatedResult<any>> {
+    const page = paginationDto?.page || 1;
+    const limit = paginationDto?.limit || 20;
+    const search = paginationDto?.search || '';
+    const sortBy = paginationDto?.sortBy || 'createdAt';
+    const sortOrder = paginationDto?.sortOrder || 'desc';
+
+    const skip = (page - 1) * limit;
+
+    const where: any = {
+      deletedAt: null,  // Exclude soft-deleted sales
+    };
+
+    if (search) {
+      where.OR = [
+        { invoiceNumber: { contains: search, mode: 'insensitive' as const } },
+        { customer: { name: { contains: search, mode: 'insensitive' as const } } },
+      ];
+    }
+
+    const [data, total] = await Promise.all([
+      this.prisma.sale.findMany({
+        where,
+        skip,
+        take: limit,
+        include: SALE_INCLUDE,
+        orderBy: { [sortBy]: sortOrder },
+      }),
+      this.prisma.sale.count({ where }),
+    ]);
+
+    const totalPages = Math.ceil(total / limit);
+
+    return {
+      data: data.map(sale => ({
+        ...sale,
+        total: Number(sale.total),
+        subtotal: Number(sale.subtotal),
+        discount: Number(sale.discount),
+        tax: Number(sale.tax),
+        amountPaid: Number(sale.amountPaid),
+        amountDue: Number(sale.amountDue),
+      })),
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages,
+        hasNextPage: page < totalPages,
+        hasPreviousPage: page > 1,
+      },
+    };
+  }
+
+  findOne(id: string) {
+    return this.prisma.sale.findUniqueOrThrow({ where: { id }, include: SALE_INCLUDE });
+  }
+
+  async create(dto: CreateSaleDto) {
+    const lowStockAlerts: string[] = [];
+    let invoiceNumberForNotify = '';
+    let totalForNotify = 0;
+
+    const sale = await this.prisma.$transaction(async (tx) => {
+      const subtotal = dto.items.reduce((sum, i) => sum + (i.sellingPrice - (i.discount ?? 0)) * i.quantity, 0);
+      const discount = dto.discount ?? 0;
+      const discountType = (dto.discountType as any) || 'PERCENTAGE';
+      const tax = dto.tax ?? 0;
+
+      // Calculate total based on discount type
+      let total: number;
+      if (discountType === 'FIXED_AMOUNT') {
+        total = subtotal - discount + tax;
+      } else {
+        // PERCENTAGE
+        total = subtotal - (subtotal * discount / 100) + tax;
+      }
+
+      const amountPaid = dto.amountPaid ?? total;
+      const amountDue = total - amountPaid;
+
+      // Determine payment status
+      let paymentStatus: 'PAID' | 'PARTIALLY_PAID' | 'UNPAID';
+      if (amountPaid >= total) {
+        paymentStatus = 'PAID';
+      } else if (amountPaid > 0) {
+        paymentStatus = 'PARTIALLY_PAID';
+      } else {
+        paymentStatus = 'UNPAID';
+      }
+
+      const invoiceNumber = `INV-${Date.now()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
+
+      const sale = await tx.sale.create({
+        data: {
+          invoiceNumber,
+          customerId: dto.customerId ?? null,
+          userId: dto.userId,
+          paymentMethod: dto.paymentMethod as any,
+          subtotal,
+          discount,
+          discountType: discountType as any,
+          tax,
+          total,
+          amountPaid,
+          amountDue,
+          paymentStatus: paymentStatus as any,
+          notes: dto.notes,
+          items: {
+            create: dto.items.map((i) => ({
+              productId: i.productId,
+              quantity: i.quantity,
+              costPrice: i.costPrice,
+              sellingPrice: i.sellingPrice,
+              discount: i.discount ?? 0,
+              total: (i.sellingPrice - (i.discount ?? 0)) * i.quantity,
+            })),
+          },
+          payments: amountPaid > 0 ? {
+            create: [{ method: dto.paymentMethod as any, amount: amountPaid }],
+          } : undefined,
+        },
+        include: SALE_INCLUDE,
+      });
+
+      // Deduct inventory with atomic check (prevents race condition)
+      const updatedInventories = await Promise.all(
+        dto.items.map(async (item) => {
+          const updated = await tx.inventory.updateMany({
+            where: {
+              productId: item.productId,
+              quantity: { gte: item.quantity } // Only update if quantity is sufficient
+            },
+            data: { quantity: { decrement: item.quantity } },
+          });
+
+          // If no rows updated, stock was insufficient
+          if (updated.count === 0) {
+            const product = await tx.product.findUnique({ where: { id: item.productId } });
+            throw new BadRequestException(`Insufficient stock for "${product?.name ?? item.productId}"`);
+          }
+
+          // Fetch updated inventory for low stock check
+          return tx.inventory.findUnique({
+            where: { productId: item.productId },
+            include: { product: true },
+          });
+        }),
+      );
+
+      for (const inventory of updatedInventories) {
+        if (inventory && inventory.quantity <= inventory.minStock) {
+          lowStockAlerts.push(inventory.product.name);
+        }
+      }
+
+      // Create loan for partial payment (if customer exists and amount is due)
+      if (dto.customerId && amountDue > 0) {
+        const loanNumber = `LOAN-SALE-${invoiceNumber}`;
+
+        // Create the loan linked to this sale
+        await tx.loan.create({
+          data: {
+            loanNumber,
+            type: 'CUSTOMER_LOAN',
+            customerId: dto.customerId,
+            saleId: sale.id,
+            principalAmount: amountDue,
+            amountDue: amountDue,
+            reason: `Partial payment for sale ${invoiceNumber}`,
+            status: 'ACTIVE',
+          }
+        });
+
+        // Increment customer debt (Loan creation does NOT auto-increment, we do it manually)
+        await tx.customer.update({
+          where: { id: dto.customerId },
+          data: { debt: { increment: amountDue } },
+        });
+      }
+
+      invoiceNumberForNotify = invoiceNumber;
+      totalForNotify = total;
+
+      return sale;
+    }, { timeout: 15000 });
+
+    this.notifications.add('sale', `New sale ${invoiceNumberForNotify} for ${totalForNotify.toFixed(2)} DH`);
+    for (const productName of lowStockAlerts) {
+      this.notifications.add('low_stock', `Low stock alert: "${productName}" is running low`);
+    }
+
+    return sale;
+  }
+
+  async refund(id: string) {
+    const sale = await this.prisma.sale.findUniqueOrThrow({
+      where: { id },
+      include: { items: true, loan: true, customer: true },
+    });
+    if (sale.status === 'REFUNDED') throw new BadRequestException('Sale already refunded');
+
+    return this.prisma.$transaction(async (tx) => {
+      // Restore inventory
+      for (const item of sale.items) {
+        await tx.inventory.update({
+          where: { productId: item.productId },
+          data: { quantity: { increment: item.quantity } },
+        });
+      }
+
+      // If there's a linked loan, cancel it and reverse customer debt
+      if (sale.loan) {
+        await tx.loan.update({
+          where: { id: sale.loan.id },
+          data: { status: 'CANCELLED' },
+        });
+
+        if (sale.customerId) {
+          // Reverse the original debt increment (the full amountDue that created the loan)
+          await tx.customer.update({
+            where: { id: sale.customerId },
+            data: { debt: { decrement: Number(sale.loan.principalAmount) } },
+          });
+        }
+      }
+
+      // Update sale status
+      const updated = await tx.sale.update({
+        where: { id },
+        data: { status: 'REFUNDED' },
+        include: SALE_INCLUDE,
+      });
+
+      return updated;
+    }).then((updated) => {
+      this.notifications.add('refund', `Sale ${updated.invoiceNumber} was refunded`);
+      return updated;
+    });
+  }
+
+  async addPayment(dto: AddPaymentDto) {
+    const sale = await this.prisma.sale.findUniqueOrThrow({
+      where: { id: dto.saleId },
+      include: { loan: true },  // Include linked loan
+    });
+
+    if (sale.paymentStatus === 'PAID') {
+      throw new BadRequestException('Sale is already fully paid');
+    }
+
+    const newAmountPaid = Number(sale.amountPaid) + dto.amount;
+    const newAmountDue = Number(sale.amountDue) - dto.amount;
+
+    if (newAmountDue < 0) {
+      throw new BadRequestException('Payment amount exceeds remaining balance');
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      // Create payment record
+      await tx.payment.create({
+        data: {
+          saleId: dto.saleId,
+          method: dto.method as any,
+          amount: dto.amount,
+        },
+      });
+
+      // Update sale
+      const paymentStatus = newAmountDue <= 0 ? 'PAID' : 'PARTIALLY_PAID';
+      const updatedSale = await tx.sale.update({
+        where: { id: dto.saleId },
+        data: {
+          amountPaid: newAmountPaid,
+          amountDue: newAmountDue,
+          paymentStatus: paymentStatus as any,
+        },
+        include: SALE_INCLUDE,
+      });
+
+      // Update customer debt
+      if (sale.customerId) {
+        await tx.customer.update({
+          where: { id: sale.customerId },
+          data: {
+            debt: { decrement: dto.amount },
+            totalPaid: { increment: dto.amount },
+          },
+        });
+      }
+
+      // If this sale has a linked loan, update the loan as well
+      if (sale.loan) {
+        const newLoanAmountPaid = Number(sale.loan.amountPaid) + dto.amount;
+        const newLoanAmountDue = Number(sale.loan.amountDue) - dto.amount;
+
+        await tx.loan.update({
+          where: { id: sale.loan.id },
+          data: {
+            amountPaid: newLoanAmountPaid,
+            amountDue: newLoanAmountDue,
+            status: newLoanAmountDue <= 0 ? 'COMPLETED' : 'ACTIVE',
+          }
+        });
+
+        // Create LoanPayment record
+        await tx.loanPayment.create({
+          data: {
+            loanId: sale.loan.id,
+            amount: dto.amount,
+            paymentMethod: dto.method as any,
+          }
+        });
+      }
+
+      return updatedSale;
+    });
+  }
+
+  async updatePaymentStatus(id: string, status: 'PAID' | 'PARTIALLY_PAID' | 'UNPAID') {
+    const sale = await this.prisma.sale.findUnique({ where: { id }, include: { payments: true } });
+    if (!sale) throw new BadRequestException('Sale not found');
+
+    // Prevent changing status if there are recorded payments
+    if (sale.payments && sale.payments.length > 0 && status !== sale.paymentStatus) {
+      throw new BadRequestException('Cannot change payment status for a sale with recorded payments. Use the payment recording feature instead.');
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      let updateData: any = { paymentStatus: status as any };
+      const currentAmountPaid = Number(sale.amountPaid);
+      const total = Number(sale.total);
+      const currentAmountDue = Number(sale.amountDue);
+
+      // Adjust amounts and customer debt based on status change
+      if (status === 'PAID' && sale.paymentStatus !== 'PAID') {
+        // Mark as fully paid
+        const additionalPayment = total - currentAmountPaid;
+        updateData.amountPaid = total;
+        updateData.amountDue = 0;
+
+        // Update customer debt if customer exists and there's outstanding debt
+        if (sale.customerId && currentAmountDue > 0) {
+          await tx.customer.update({
+            where: { id: sale.customerId },
+            data: {
+              debt: { decrement: currentAmountDue },
+              totalPaid: { increment: additionalPayment },
+            },
+          });
+        }
+      } else if (status === 'UNPAID' && sale.paymentStatus !== 'UNPAID') {
+        // Mark as unpaid
+        updateData.amountPaid = 0;
+        updateData.amountDue = total;
+
+        // Update customer debt if customer exists
+        if (sale.customerId) {
+          const debtChange = total - currentAmountDue;
+          const customerUpdateData: any = {};
+
+          if (debtChange !== 0) {
+            customerUpdateData.debt = { increment: debtChange };
+          }
+          if (currentAmountPaid > 0) {
+            customerUpdateData.totalPaid = { decrement: currentAmountPaid };
+          }
+
+          if (Object.keys(customerUpdateData).length > 0) {
+            await tx.customer.update({
+              where: { id: sale.customerId },
+              data: customerUpdateData,
+            });
+          }
+        }
+      }
+
+      return tx.sale.update({
+        where: { id },
+        data: updateData,
+        include: SALE_INCLUDE,
+      });
+    });
+  }
+
+  async delete(id: string) {
+    // First refund the sale (restores inventory, cancels loan, reverses debt)
+    await this.refund(id);
+
+    // Then soft-delete by setting deletedAt
+    return this.prisma.sale.update({
+      where: { id },
+      data: { deletedAt: new Date() },
+      include: SALE_INCLUDE,
+    });
+  }
+}
