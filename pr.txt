@@ -1,0 +1,1070 @@
+I need you to take control of the CURRENT project and stabilize it.
+
+IMPORTANT:
+The project has gone through many phases and previous agents made many changes. Some things work, some things don't, and previous reports are not necessarily accurate.
+
+DO NOT blindly trust previous TODO files, phase reports, summaries, or claims that something is "complete".
+
+Your job now is to inspect the ACTUAL CURRENT CODE and make the project reliable.
+
+============================================================
+PROJECT CONTEXT
+============================================================
+
+This is a Windows offline desktop Retail CRM.
+
+The architecture we want is:
+
+CUSTOMER PC
+│
+├── RetailCRM.exe
+│
+├── Local NestJS API
+│
+└── Local MySQL database
+│
+└── Normal CRM operation works OFFLINE
+│
+└── HTTPS only when communicating with License API
+          │
+          ▼
+     LICENSE API
+          │
+          ▼
+     NEON LICENSE DATABASE
+
+
+There are TWO completely different database purposes:
+
+1. CUSTOMER LOCAL MYSQL
+   - Stores the customer's CRM data
+   - Products
+   - Product images
+   - Inventory
+   - Sales
+   - Customers
+   - Suppliers
+   - Expenses
+   - Loans
+   - Purchase orders
+   - Users
+   - Settings
+   - Audit data
+   - etc.
+
+2. ONLINE NEON LICENSE DATABASE
+   - ONLY for licensing infrastructure
+   - Products sold by me
+   - Customers
+   - License keys
+   - Device activations
+   - Activation history
+   - License status
+   - Expiration
+   - Device limits
+   - Admin users
+   - Audit logs
+   - etc.
+
+The customer's local MySQL database MUST NOT be used as the license database.
+
+The license system MUST NOT depend on the customer's local MySQL database.
+
+============================================================
+IMPORTANT DATABASE SITUATION
+============================================================
+
+I provided a NEW Neon connection string/key for the license system.
+
+I can now see tables in Neon, but the tables are empty.
+
+DO NOT assume this is an error.
+
+First determine whether this Neon database is the NEW LICENSE DATABASE.
+
+If it is the new License Database, empty tables are expected initially.
+
+The system should populate the appropriate tables when I use the License Dashboard to create:
+
+- products
+- customers
+- licenses
+- devices
+- activation events
+- administrators
+- audit events
+
+DO NOT copy customer CRM data into the License Neon database.
+
+DO NOT seed fake customer CRM data into Neon.
+
+DO NOT delete the existing Neon tables.
+
+DO NOT reset the Neon database.
+
+DO NOT run destructive migrations.
+
+============================================================
+PHASE 0 — FULL AUDIT FIRST
+============================================================
+
+Before changing anything, inspect the CURRENT project.
+
+Do NOT start coding immediately.
+
+Inspect:
+
+- desktop-app
+- frontend
+- backend
+- Prisma
+- MySQL migrations
+- license-api
+- license dashboard
+- Electron
+- setup wizard
+- scripts
+- package.json files
+- environment files
+- database schemas
+- API endpoints
+- authentication
+- license validation
+- device binding
+- packaging
+
+Search the entire repository for:
+
+branch
+branchId
+branches
+top-branches
+branch revenue
+InventoryTransfer
+Cloudinary
+cloudinary
+DATABASE_URL
+LICENSE
+license
+device
+activation
+Neon
+PostgreSQL
+MySQL
+
+Produce an internal understanding of the current architecture before making changes.
+
+============================================================
+PHASE 1 — DATABASE VERIFICATION
+============================================================
+
+Determine exactly which project uses which database.
+
+There must be a clear separation:
+
+ONLINE LICENSE SYSTEM
+---------------------
+License Dashboard
+      ↓
+License API
+      ↓
+Neon License Database
+
+
+OFFLINE CRM
+-----------
+Electron
+      ↓
+Local NestJS
+      ↓
+Local MySQL
+
+
+Check every DATABASE_URL/environment configuration.
+
+DO NOT PRINT:
+- passwords
+- API keys
+- JWT secrets
+- complete connection strings
+
+You may report:
+- host
+- database name
+- provider
+- which project uses it
+
+without exposing credentials.
+
+Determine:
+
+1. Is the current Neon database the License Database?
+2. Is the license API actually connected to it?
+3. Does Prisma point to the correct Neon database?
+4. Are the Neon tables created from the correct license schema?
+5. Why are the tables empty?
+6. Is that empty state expected?
+7. Is the License Dashboard using the same database?
+8. Is the License API using the same database?
+9. Are there accidentally multiple Neon databases/projects/configurations?
+10. Is any CRM data incorrectly pointing at Neon?
+
+DO NOT MODIFY DATA DURING THIS INVESTIGATION.
+
+============================================================
+PHASE 2 — LICENSE DATABASE
+============================================================
+
+The License Neon database should support at minimum:
+
+ADMIN
+- id
+- name
+- email/username
+- password hash
+- role
+- status
+- createdAt
+- updatedAt
+
+PRODUCT
+- id
+- name
+- description
+- version
+- status
+- createdAt
+- updatedAt
+
+CUSTOMER
+- id
+- name
+- company
+- email
+- phone
+- notes
+- status
+- createdAt
+- updatedAt
+
+LICENSE
+- id
+- license key
+- product
+- customer
+- status
+- expiration
+- device limit
+- activation count
+- createdAt
+- updatedAt
+
+DEVICE
+- id
+- license
+- device identifier hash
+- device name
+- OS information
+- first activated
+- last seen
+- status
+
+ACTIVATION EVENT
+- id
+- license
+- device
+- event type
+- timestamp
+- IP information if appropriate
+- metadata where appropriate
+
+AUDIT LOG
+- id
+- admin
+- action
+- entity
+- entity ID
+- timestamp
+- metadata
+
+Use proper relations and indexes.
+
+Do NOT create unnecessary CRM tables here.
+
+============================================================
+PHASE 3 — LICENSE DASHBOARD
+============================================================
+
+There must be a REAL standalone License Dashboard project.
+
+If the current implementation is embedded inside license-api/public/dashboard.html or otherwise mixed into the API, reorganize it into a clean standalone project.
+
+Use a modern production-ready stack.
+
+Preferred:
+
+- Next.js
+- TypeScript
+- modern React
+- modern component system
+- responsive UI
+- proper authentication
+- server-side/API protection where appropriate
+
+Create a separate folder such as:
+
+retail-crm-license-dashboard/
+
+The dashboard is MY ADMIN PANEL.
+
+It is NOT the customer's CRM.
+
+============================================================
+LICENSE DASHBOARD FEATURES
+============================================================
+
+Create a professional dashboard where I can manage my software licenses.
+
+Dashboard overview:
+
+- total products
+- total customers
+- total licenses
+- active licenses
+- expired licenses
+- revoked licenses
+- total activated devices
+- recent activations
+- recent license activity
+
+PRODUCT MANAGEMENT:
+
+I need to manage the products I sell.
+
+Create:
+
+Products
+
+Each product should support:
+
+- product name
+- description
+- version
+- status
+- notes
+- created date
+- updated date
+
+I may sell multiple software products in the future.
+
+For example:
+
+Retail CRM
+Future Product 1
+Future Product 2
+
+The license system must support multiple products.
+
+============================================================
+CUSTOMER MANAGEMENT
+============================================================
+
+Create a Customers section.
+
+I need to see:
+
+- customer name
+- company
+- email
+- phone
+- notes
+- products purchased
+- licenses
+- devices
+- activation history
+- license status
+
+Allow creating/editing customers.
+
+============================================================
+LICENSE GENERATION
+============================================================
+
+Create a professional license-generation interface.
+
+I need to select:
+
+- Product
+- Customer
+- License duration
+- Expiration date
+- Maximum devices
+- Notes
+
+Then generate a cryptographically strong license key.
+
+Example format:
+
+XXXX-XXXX-XXXX-XXXX-XXXX
+
+The key must be generated securely.
+
+DO NOT use predictable IDs.
+
+DO NOT use simple random strings without adequate entropy.
+
+The license key must be stored securely.
+
+The dashboard should show:
+
+- license key
+- product
+- customer
+- status
+- expiration
+- device limit
+- current device count
+- activation count
+- created date
+- last activity
+
+I need actions:
+
+- copy key
+- revoke
+- reactivate if allowed
+- extend expiration
+- change device limit
+- view devices
+- view activation history
+
+============================================================
+DEVICE MANAGEMENT
+============================================================
+
+Every license can have a device limit.
+
+Example:
+
+License:
+Retail CRM
+Customer:
+ABC Store
+Maximum devices:
+1
+
+Device:
+Windows PC
+Device ID hash:
+xxxxx
+First activation:
+date
+Last validation:
+date
+Status:
+ACTIVE
+
+If maximum devices = 1:
+
+A second computer MUST NOT automatically activate.
+
+The dashboard should allow me to see the devices attached to a license.
+
+I should be able to revoke a device from the dashboard.
+
+============================================================
+ACTIVATION HISTORY
+============================================================
+
+Track every important license event.
+
+Examples:
+
+ACTIVATED
+VALIDATED
+REJECTED
+REVOKED
+DEVICE_REMOVED
+EXPIRED
+
+Show:
+
+- license
+- customer
+- device
+- event
+- timestamp
+- relevant metadata
+
+Provide filtering/searching.
+
+============================================================
+AUDIT LOG
+============================================================
+
+Track administrator actions.
+
+Examples:
+
+ADMIN_CREATED_LICENSE
+ADMIN_REVOKED_LICENSE
+ADMIN_REACTIVATED_LICENSE
+ADMIN_CHANGED_DEVICE_LIMIT
+ADMIN_EXTENDED_LICENSE
+ADMIN_REMOVED_DEVICE
+ADMIN_CREATED_CUSTOMER
+ADMIN_UPDATED_PRODUCT
+
+This is important because I need to know what happened to licenses.
+
+============================================================
+PHASE 4 — LICENSE API
+============================================================
+
+Create/repair the standalone License API.
+
+It must be completely separate from the local CRM backend.
+
+Architecture:
+
+License Dashboard
+       ↓
+License API
+       ↓
+Neon License DB
+
+
+Customer Desktop App
+       ↓ HTTPS
+License API
+       ↓
+Neon License DB
+
+
+The customer's local NestJS CRM backend must NOT directly communicate with Neon.
+
+============================================================
+LICENSE API ENDPOINTS
+============================================================
+
+Implement secure endpoints for:
+
+POST /license/activate
+
+POST /license/validate
+
+POST /license/deactivate-device
+
+GET /license/status
+
+The exact routes may be adapted to the current architecture, but the responsibilities must exist.
+
+Activation must verify:
+
+- key exists
+- product exists
+- license is active
+- license is not expired
+- device is allowed
+- device limit has not been exceeded
+- license has not been revoked
+
+On successful activation:
+
+- register device
+- record activation event
+- return signed activation information
+
+============================================================
+DEVICE IDENTIFICATION
+============================================================
+
+Use a stable device identifier derived from appropriate non-sensitive machine information.
+
+DO NOT collect unnecessary personal information.
+
+Store a HASH of the device identifier rather than unnecessary raw hardware information where possible.
+
+Do not expose sensitive device information through the dashboard.
+
+============================================================
+SIGNED LICENSE RESPONSES
+============================================================
+
+License responses must be cryptographically authenticated.
+
+The desktop application must be able to verify that the activation/validation response actually came from the License API.
+
+Do not rely only on:
+
+"API returned {valid:true}"
+
+Use cryptographic verification.
+
+Keep private signing secrets ONLY on the server.
+
+The desktop application must NOT contain the server's private signing secret.
+
+============================================================
+OFFLINE OPERATION
+============================================================
+
+After successful activation, the CRM must work without internet.
+
+The license should support the previously designed offline grace period.
+
+Current requirement:
+
+7-day offline grace period.
+
+During normal offline operation:
+
+Desktop
+↓
+Local NestJS
+↓
+Local MySQL
+
+No internet is required.
+
+When internet is available, the desktop app periodically validates the license.
+
+If validation fails because the license is revoked/expired/invalid, handle it according to the license policy.
+
+Do NOT make normal CRM functionality depend on Neon being available.
+
+============================================================
+PHASE 5 — SINGLE-SHOP CRM
+============================================================
+
+The offline CRM is for ONE SHOP.
+
+There are NO branches.
+
+Do not reintroduce branch functionality.
+
+Remove/rewrite all remaining:
+
+- branch management
+- branch selector
+- branch transfers
+- branch revenue
+- top branches
+- branch-specific inventory
+- branch-specific sales
+- branch-specific expenses
+- branch-specific users
+
+Search the entire project for branch-related code before considering this complete.
+
+The dashboard should NOT show:
+
+"Revenue by Branch"
+
+Replace it with useful single-shop metrics such as:
+
+- Today's Sales
+- Today's Profit
+- Monthly Sales
+- Monthly Profit
+- Low Stock Products
+- Customer Receivables
+- Supplier Payables
+- Expenses
+- Best Selling Products
+- Recent Sales
+- Inventory Value
+
+============================================================
+PHASE 6 — PRODUCT IMAGES
+============================================================
+
+IMPORTANT:
+
+Cloudinary must NOT be used.
+
+Product images must be stored locally in the customer's MySQL database.
+
+Requirements:
+
+- upload image
+- store image data in MySQL
+- retrieve image when required
+- display on Products page
+- display on POS
+- replace image
+- delete image
+- handle missing images
+- avoid loading unnecessarily huge image payloads
+
+Search the entire project for Cloudinary references.
+
+Remove actual Cloudinary dependencies from the offline CRM.
+
+Do not send customer product images to external cloud storage.
+
+============================================================
+PHASE 7 — SETUP WIZARD
+============================================================
+
+The first-run wizard should work like this:
+
+STEP 1
+License Activation
+
+User enters license key.
+
+Desktop connects to License API over HTTPS.
+
+License is verified.
+
+Device is registered.
+
+If invalid:
+BLOCK setup.
+
+If valid:
+continue.
+
+STEP 2
+Create local admin account.
+
+User creates:
+
+- username/email
+- password
+
+Password must be securely hashed.
+
+STEP 3
+MySQL Configuration
+
+User enters:
+
+- MySQL host
+- port
+- username
+- password
+- database name
+
+Provide:
+
+TEST CONNECTION
+
+STEP 4
+Initialize database.
+
+STEP 5
+Finish setup.
+
+Then launch CRM.
+
+MySQL credentials should be stored securely using the existing Electron secure storage approach.
+
+Do not store plaintext credentials unnecessarily.
+
+============================================================
+PHASE 8 — ELECTRON
+============================================================
+
+The desktop application must work as a real Windows application.
+
+Electron should manage:
+
+- first-run detection
+- setup wizard
+- local backend
+- frontend
+- secure IPC
+- license validation
+- encrypted configuration
+- application data directory
+- uploads
+- shutdown/startup
+
+Local backend must bind to:
+
+127.0.0.1
+
+NOT:
+
+0.0.0.0
+
+The CRM should not expose its local API to the LAN.
+
+============================================================
+PHASE 9 — RUN SCRIPT
+============================================================
+
+Create/update:
+
+RUN-DESKTOP.bat
+
+It should make development/testing easy.
+
+It should:
+
+1. Check required dependencies.
+2. Check MySQL availability.
+3. Start the local backend.
+4. Start the frontend/Electron application.
+5. Clearly report errors.
+6. Avoid blindly starting duplicate backend processes.
+7. Avoid port conflicts where possible.
+
+Document how to stop everything.
+
+============================================================
+PHASE 10 — SECURITY AUDIT
+============================================================
+
+Review:
+
+- JWT
+- password hashing
+- session handling
+- Electron IPC
+- safeStorage
+- CORS
+- localhost binding
+- environment variables
+- license API authentication
+- license signatures
+- device binding
+- SQL injection
+- Prisma usage
+- file uploads
+- path traversal
+- API authorization
+- dashboard authentication
+- admin permissions
+
+Do not claim "uncrackable".
+
+No software can honestly be guaranteed uncrackable.
+
+Instead implement strong practical protections:
+
+- server-side license validation
+- device binding
+- signed responses
+- encrypted local configuration
+- minimal exposed secrets
+- code signing where appropriate
+- obfuscation only as an additional layer, not the core security mechanism
+- server-side revocation
+
+============================================================
+PHASE 11 — DO NOT BREAK EXISTING WORK
+============================================================
+
+Before changing a file:
+
+Understand how it is currently used.
+
+Do not randomly rewrite working modules.
+
+Do not replace the whole project with a new framework.
+
+Do not migrate React → something else.
+
+Do not migrate NestJS → another backend framework.
+
+Do not migrate Electron → Tauri.
+
+Preserve working business logic wherever possible.
+
+Only change what is necessary.
+
+============================================================
+PHASE 12 — DATABASE SAFETY
+============================================================
+
+Before migrations:
+
+- inspect current schema
+- create backup instructions
+- detect destructive operations
+
+Never silently drop production/customer data.
+
+Never run destructive SQL against the existing customer database without explicit confirmation.
+
+For the NEW Neon License Database, schema creation is acceptable, but still avoid destructive resets.
+
+============================================================
+PHASE 13 — TESTING
+============================================================
+
+After repairs, test the entire flow.
+
+Backend:
+
+- build
+- start
+- login
+- authentication
+- products
+- categories
+- inventory
+- POS
+- sales
+- customers
+- suppliers
+- expenses
+- loans
+- purchase orders
+- dashboard
+- reports
+- settings
+- audit
+- uploads
+
+Frontend:
+
+- login
+- dashboard
+- products
+- product images
+- POS
+- inventory
+- customers
+- suppliers
+- expenses
+- loans
+- purchase orders
+- reports
+- settings
+
+Desktop:
+
+- first run
+- license activation
+- invalid license
+- valid license
+- device limit
+- MySQL connection
+- database initialization
+- admin creation
+- normal login
+- offline operation
+- restart
+- license validation
+- expired/revoked license behavior
+
+License Dashboard:
+
+- admin login
+- create product
+- create customer
+- generate license
+- change device limit
+- view license
+- activate license
+- view device
+- view activation history
+- revoke license
+- revoke device
+- audit log
+
+============================================================
+PHASE 14 — NO EXE YET
+============================================================
+
+DO NOT create the final Windows EXE yet.
+
+First make the development version completely stable.
+
+I want to manually test everything.
+
+Only after I explicitly say:
+
+"READY FOR EXE"
+
+should you start the final Windows packaging phase.
+
+============================================================
+PHASE 15 — DOCUMENTATION
+============================================================
+
+Create/update:
+
+PROJECT-ARCHITECTURE.md
+LICENSE-SYSTEM.md
+LICENSE-DASHBOARD.md
+MYSQL-SETUP.md
+DESKTOP-SETUP.md
+TESTING-CHECKLIST.md
+PRE-EXE-CHECKLIST.md
+
+Documentation must describe the ACTUAL implementation.
+
+Do not document features that don't exist.
+
+============================================================
+FINAL REQUIREMENT
+============================================================
+
+Do not tell me:
+
+"Phase complete"
+
+just because a build succeeds.
+
+A phase is complete ONLY when:
+
+1. Code exists
+2. Code builds
+3. Service starts
+4. API works
+5. Frontend works
+6. Database works
+7. Relevant user flow is tested
+8. No known blocking errors remain
+
+If something cannot be tested, explicitly say:
+
+NOT TESTED
+
+instead of claiming it works.
+
+============================================================
+FIRST ACTION
+============================================================
+
+Start with a complete audit.
+
+Do NOT modify code yet.
+
+Specifically verify:
+
+1. Which Neon database the new project is using.
+2. Why the Neon tables are empty.
+3. Whether that empty state is expected.
+4. Whether License API and License Dashboard use the SAME Neon License Database.
+5. Whether the local CRM is completely separated from Neon.
+6. Current build status of every project.
+7. Current runtime status.
+8. Remaining TypeScript errors.
+9. Remaining branch references.
+10. Remaining Cloudinary references.
+11. Current Electron status.
+12. Current license system status.
+
+Create:
+
+CURRENT-STATE-AUDIT.md
+
+Do not make code changes until the audit is complete.
+
+After the audit, give me a concise summary of:
+
+CRITICAL PROBLEMS
+HIGH PRIORITY
+MEDIUM PRIORITY
+WORKING
+NOT TESTED
+
+Then propose the repair order.
+
+WAIT for my confirmation before performing major architectural changes.

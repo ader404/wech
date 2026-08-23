@@ -1,0 +1,1168 @@
+Continue the Retail CRM Desktop project from the current state.
+
+IMPORTANT: This is now the SINGLE-SHOP OFFLINE DESKTOP EDITION.
+
+The online version supports multiple branches, but the desktop application will be installed and used by ONE customer at ONE physical shop. There must be NO branch management, branch switching, branch selection, branch-specific permissions, or branch comparison in the desktop edition.
+
+Do NOT modify the original online project:
+C:\Users\amoh0\Desktop\CRMs\retail-crm
+
+Only work inside:
+C:\Users\amoh0\Desktop\CRMs\retail-crm-desktop
+
+Do not stop after analysis. Implement the changes, test them, fix problems you encounter, and continue through the phases described below.
+
+==================================================
+PART 1 — REMOVE MULTI-BRANCH ARCHITECTURE
+==================================================
+
+Audit the entire desktop project and remove all unnecessary multi-branch functionality.
+
+The desktop application represents exactly ONE shop.
+
+Remove or refactor:
+
+- Branch management pages
+- Branch CRUD
+- Branch creation/edit/delete
+- Branch switching
+- Branch selectors
+- Branch dropdowns
+- Branch filters
+- Branch-specific dashboards
+- Branch comparison
+- "Top branches"
+- "Revenue by branch"
+- "Sales by branch"
+- Branch-specific reports
+- Branch-specific analytics
+- Branch-specific navigation
+- Branch-related setup steps
+- Branch-related settings
+- Branch-related API endpoints
+- Branch-related frontend components
+- Branch-related DTOs where no longer necessary
+- Branch-related services where no longer necessary
+- Branch-related state/context
+- Branch-related permissions
+- Any Electron setup UI asking the customer to select a branch
+
+Do NOT blindly delete database relationships if doing so would break the application.
+
+Instead, simplify the data model intelligently.
+
+The goal is:
+
+Customer installs the application
+        ↓
+Sets up ONE shop
+        ↓
+Creates admin account
+        ↓
+Connects ONE local MySQL database
+        ↓
+Uses the CRM/POS
+
+There is no concept of multiple branches in the desktop product.
+
+If the existing Prisma schema has branchId fields everywhere, determine the safest migration strategy.
+
+Prefer removing branchId and Branch relationships completely if they are no longer needed.
+
+If removing them would create unnecessary migration risk, replace the concept with a single shop/company configuration stored in Settings rather than maintaining a multi-branch architecture.
+
+Do NOT leave fake branch functionality just because the old code had it.
+
+==================================================
+PART 2 — REPLACE BRANCH DASHBOARD ANALYTICS
+==================================================
+
+The existing dashboard contains an element showing something similar to:
+
+"Revenue by Branch"
+or
+"Revenue by Branches"
+
+This is meaningless in the desktop edition.
+
+REMOVE IT.
+
+Replace it with useful single-shop business analytics.
+
+The dashboard should instead contain things such as:
+
+1. Today's Revenue
+2. Today's Sales
+3. Today's Profit
+4. Total Products
+5. Low Stock Products
+6. Outstanding Customer Receivables
+7. Outstanding Supplier Payables
+8. Today's Expenses
+9. Net Profit
+10. Recent Sales
+11. Top Selling Products
+12. Sales Trend
+13. Payment Method Breakdown
+14. Low Stock Alerts
+15. Recent Activity
+
+Choose the most useful combination based on the existing dashboard and available backend data.
+
+Do not invent fake statistics.
+
+All dashboard numbers must come from the real local MySQL database.
+
+For the chart that previously displayed branch revenue, replace it with:
+
+"Sales Trend"
+
+Show revenue/sales over time, preferably:
+
+- Today
+- Last 7 days
+- Last 30 days
+
+Use real sales records.
+
+If the existing dashboard already has a useful sales trend chart, use another meaningful metric such as:
+
+"Top Selling Products"
+
+or
+
+"Payment Methods"
+
+depending on what makes the dashboard more useful.
+
+==================================================
+PART 3 — SINGLE SHOP SETTINGS
+==================================================
+
+Since there is only one shop, add/retain a Shop/Business Profile section in Settings.
+
+The customer should be able to configure:
+
+- Shop name
+- Owner name
+- Phone
+- Email
+- Address
+- Tax/VAT number if applicable
+- Logo
+- Currency
+- Receipt footer
+- Receipt header
+- Default payment method
+- Other useful shop settings already supported by the application
+
+This information should be stored locally in MySQL.
+
+The shop profile should be used by:
+
+- POS receipts
+- Printed invoices
+- Dashboard
+- Settings
+- Reports
+- Business information
+
+There should be no "Branch 1", "Main Branch", or branch selector.
+
+The application should simply understand:
+
+CURRENT SHOP = THE CUSTOMER'S SHOP
+
+==================================================
+PART 4 — POS SIMPLIFICATION
+==================================================
+
+Remove all branch selection from POS.
+
+When creating a sale:
+
+DO NOT ask:
+
+"Which branch?"
+
+The sale automatically belongs to the current local shop.
+
+Inventory is also local to this shop.
+
+Product stock should simply be:
+
+Product → Stock quantity
+
+rather than:
+
+Product → Branch → Stock quantity
+
+if removing branchId is safe.
+
+The POS should work completely offline after activation.
+
+==================================================
+PART 5 — USERS AND PERMISSIONS
+==================================================
+
+Keep the existing authentication and authorization architecture where useful.
+
+However, remove branch-specific permissions.
+
+Users should not have:
+
+- Branch assignment
+- Branch-specific role
+- Branch access list
+- Branch switching
+
+Keep useful roles such as:
+
+- SUPER_ADMIN
+- ADMIN
+- MANAGER
+- CASHIER
+
+Only retain roles that already exist and are actually useful.
+
+SUPER_ADMIN / ADMIN should have full control.
+
+CASHIER should have restricted access to appropriate POS/sales functions.
+
+Do not create unnecessary complexity.
+
+==================================================
+PART 6 — PRODUCT IMAGES — MYSQL ONLY
+==================================================
+
+IMPORTANT:
+
+The desktop application must NOT depend on Cloudinary or any other cloud image service.
+
+Remove the Cloudinary upload flow completely from the desktop version.
+
+Product images must be stored directly in the local MySQL database.
+
+Use an appropriate MySQL BLOB/MEDIUMBLOB/LONGBLOB strategy depending on expected image sizes.
+
+Store the image data in MySQL.
+
+When the Products page needs an image:
+
+Frontend
+    ↓
+Local NestJS API
+    ↓
+MySQL
+    ↓
+Image returned
+    ↓
+Frontend displays image
+
+The POS must use the same mechanism.
+
+When searching/selecting a product in POS:
+
+Product information + image should come from the local API/MySQL.
+
+No internet connection should be required.
+
+Optimize this properly.
+
+Do NOT load huge image blobs unnecessarily when displaying product lists.
+
+Prefer:
+
+- image thumbnail endpoint
+- optimized image response
+- lazy loading
+- caching where appropriate
+
+For example:
+
+GET /api/products/:id/image
+
+or an equivalent clean implementation.
+
+The application must continue working even if the computer has NO INTERNET CONNECTION.
+
+==================================================
+PART 7 — LICENSE SYSTEM
+==================================================
+
+Now implement the real Phase 7 license system.
+
+The license system must be completely separate from the customer's local CRM database.
+
+Architecture:
+
+                YOUR ONLINE INFRASTRUCTURE
+
+                 License Dashboard
+                        |
+                        |
+                  License API
+                        |
+                        |
+                 Neon License DB
+                        ^
+                        |
+                      HTTPS
+                        |
+                Customer Desktop App
+                        |
+                        |
+                Local NestJS API
+                        |
+                        |
+                  Local MySQL
+
+
+The customer's normal CRM operation must NEVER require the License API.
+
+Internet is only required for:
+
+- Initial license activation
+- License validation/revalidation according to the license policy
+- Device activation/replacement if necessary
+
+After successful activation, the CRM must work offline.
+
+==================================================
+PART 8 — CREATE SEPARATE LICENSE DASHBOARD
+==================================================
+
+Inside the desktop project create a completely separate folder:
+
+retail-crm-desktop/dashboard
+
+This dashboard is NOT the customer's CRM dashboard.
+
+It is YOUR ADMIN LICENSE MANAGEMENT DASHBOARD.
+
+It should be a separate web application.
+
+Suggested architecture:
+
+dashboard/
+    frontend/
+    backend/
+
+or another clean structure you consider better.
+
+The dashboard should connect to:
+
+YOUR LICENSE API
+        ↓
+Neon License Database
+
+It must NEVER connect directly to the customer's local MySQL databases.
+
+==================================================
+PART 9 — LICENSE DASHBOARD FEATURES
+==================================================
+
+Build a professional license management dashboard.
+
+I need to be able to manage all customers/licenses from one place.
+
+Dashboard homepage should show:
+
+- Total licenses
+- Active licenses
+- Expired licenses
+- Suspended licenses
+- Available licenses
+- Activated devices
+- Recent activations
+- Recent validation requests
+- Recently created licenses
+- Failed activation attempts
+- Most recently active customers
+
+Create a clean professional UI.
+
+==================================================
+PART 10 — LICENSE GENERATION
+==================================================
+
+I need a page:
+
+"Generate License"
+
+Fields:
+
+- Customer name
+- Company/shop name
+- Customer email
+- Customer phone
+- License type
+- Duration
+- Maximum devices
+- Activation limit
+- Notes
+- Start date
+- Expiration date
+- Status
+
+License types can include:
+
+- Trial
+- Monthly
+- Yearly
+- Lifetime
+
+The system should generate cryptographically strong license keys.
+
+Example format:
+
+XXXX-XXXX-XXXX-XXXX-XXXX
+
+Do NOT use predictable sequential keys.
+
+Store only the appropriate secure representation of license credentials where possible.
+
+The dashboard should allow me to:
+
+- Generate
+- View
+- Copy
+- Revoke
+- Suspend
+- Reactivate
+- Extend
+- Expire
+- Reset device activation
+- View activation history
+
+==================================================
+PART 11 — DEVICE LIMIT
+==================================================
+
+Each license must have:
+
+maxDevices
+
+Example:
+
+License A:
+maxDevices = 1
+
+This means only ONE computer can activate it.
+
+If maxDevices = 3:
+
+maximum of THREE devices.
+
+The dashboard must show:
+
+Activated devices:
+1 / 1
+
+or:
+
+2 / 3
+
+The system must prevent activation beyond the configured limit.
+
+==================================================
+PART 12 — DEVICE BINDING
+==================================================
+
+When a customer activates the application:
+
+Desktop App
+    ↓
+License API
+    ↓
+Validate license
+    ↓
+Calculate device fingerprint
+    ↓
+Check device limit
+    ↓
+Bind license to device
+    ↓
+Return signed activation response
+    ↓
+Desktop stores activation securely
+
+The device fingerprint should be based on stable machine characteristics.
+
+Do NOT collect unnecessary personal information.
+
+Hash the fingerprint before storing it.
+
+Do NOT rely on MAC address alone.
+
+The license dashboard should show:
+
+- Device ID/fingerprint hash
+- First activation
+- Last validation
+- Device status
+- License status
+- Application version
+- OS/platform information if useful
+- Activation history
+
+Do NOT collect invasive information.
+
+==================================================
+PART 13 — LICENSE ACTIVATION HISTORY
+==================================================
+
+Every important license event should be recorded.
+
+Examples:
+
+- License created
+- Activation attempted
+- Activation successful
+- Activation failed
+- Device bound
+- Validation successful
+- Validation failed
+- License suspended
+- License revoked
+- License extended
+- Device reset
+- Device replaced
+
+Store:
+
+- timestamp
+- license
+- event type
+- device identifier hash
+- application version
+- relevant safe metadata
+- success/failure
+- failure reason when appropriate
+
+The dashboard should have an activity/history page.
+
+==================================================
+PART 14 — LICENSE VALIDATION
+==================================================
+
+Implement real API endpoints such as:
+
+POST /license/activate
+
+POST /license/validate
+
+POST /license/deactivate
+
+POST /license/heartbeat
+
+Use proper authentication and authorization for the admin dashboard.
+
+The desktop application must NOT have access to admin functionality.
+
+The desktop app can only perform customer-side license operations.
+
+==================================================
+PART 15 — SIGNED ACTIVATION
+==================================================
+
+Do not simply trust a boolean response like:
+
+{
+  "valid": true
+}
+
+Use cryptographically signed activation responses.
+
+Prefer asymmetric cryptography.
+
+For example:
+
+License API:
+Private key signs activation payload.
+
+Desktop:
+Contains ONLY the public key.
+
+Desktop verifies the signature locally.
+
+Never embed the private signing key inside the desktop application.
+
+The activation payload can contain:
+
+- license ID
+- customer ID
+- device fingerprint hash
+- issuedAt
+- expiresAt
+- license type
+- feature permissions
+- application version requirements
+
+This allows the desktop application to verify activation even while offline.
+
+==================================================
+PART 16 — OFFLINE LICENSE OPERATION
+==================================================
+
+After activation, the customer must be able to use the CRM without internet.
+
+Store the signed activation securely using Windows protected storage.
+
+Do NOT store the license secret in plaintext.
+
+Use Electron safeStorage / Windows DPAPI where appropriate.
+
+Implement an offline grace period.
+
+For example:
+
+- Activation requires internet.
+- Periodic validation can require internet.
+- If internet disappears temporarily, the application continues working.
+- Once the configured grace period expires, require revalidation.
+
+Make this configurable in the license system.
+
+Do NOT make the application randomly stop working while the customer is legitimately offline.
+
+==================================================
+PART 17 — LICENSE SECURITY
+==================================================
+
+Implement strong practical application security.
+
+IMPORTANT:
+
+Do NOT claim that the application is "uncrackable".
+
+No desktop application can honestly be guaranteed uncrackable.
+
+Instead implement defense-in-depth:
+
+- Signed license payloads
+- Private signing key only on server
+- Public-key verification in desktop
+- Secure local activation storage
+- Device binding
+- License expiration
+- Server-side revocation
+- Activation limits
+- Secure HTTPS
+- Rate limiting
+- Replay protection
+- Request timestamps/nonces where appropriate
+- Secure error handling
+- No secrets in frontend code
+- No Neon credentials in desktop
+- No License DB credentials in desktop
+- No admin API credentials in desktop
+- Minimize sensitive information stored locally
+- Code signing preparation for Electron
+- Production build hardening where appropriate
+
+Do NOT attempt destructive anti-debugging or techniques that could damage the customer's computer.
+
+==================================================
+PART 18 — LICENSE DASHBOARD CUSTOMER PAGE
+==================================================
+
+Create:
+
+Customers
+
+Each customer should show:
+
+- Customer name
+- Company/shop
+- Email
+- Phone
+- License count
+- Active licenses
+- Devices
+- Last activity
+- Status
+
+Clicking a customer should show:
+
+Customer details
+Licenses
+Devices
+Activation history
+Validation history
+
+==================================================
+PART 19 — LICENSE DETAIL PAGE
+==================================================
+
+For every license show:
+
+License key / masked key
+Customer
+Shop
+Type
+Created date
+Start date
+Expiration
+Status
+Maximum devices
+Current devices
+Last validation
+Activation count
+Validation count
+
+Actions:
+
+- Copy license
+- Suspend
+- Reactivate
+- Revoke
+- Extend
+- Reset device
+- View history
+
+Add confirmation dialogs for destructive operations.
+
+==================================================
+PART 20 — STATISTICS
+==================================================
+
+Track useful license statistics:
+
+- Total activation attempts
+- Successful activations
+- Failed activations
+- Validation requests
+- Failed validations
+- Active devices
+- Expired licenses
+- Suspended licenses
+- Revoked licenses
+
+Show useful charts.
+
+Do not create fake data.
+
+==================================================
+PART 21 — CUSTOMER SETUP WIZARD
+==================================================
+
+Update the existing Phase 6 setup wizard.
+
+The flow should now be:
+
+STEP 1
+License Activation
+
+User enters license key.
+
+Desktop calls:
+
+License API
+
+If invalid:
+STOP and show clear error.
+
+If valid:
+Continue.
+
+STEP 2
+Create Administrator
+
+User creates:
+
+- Name
+- Username/email
+- Password
+- Confirm password
+
+STEP 3
+Shop Information
+
+Because this is a single-shop application:
+
+- Shop name
+- Owner
+- Address
+- Phone
+- Email
+- Currency
+- Receipt information
+
+STEP 4
+MySQL Configuration
+
+Ask for:
+
+- MySQL host
+- Port
+- Database name
+- Username
+- Password
+
+Provide:
+
+"Test Connection"
+
+Do NOT require the customer to understand technical configuration beyond these fields.
+
+If possible, make the setup wizard create the database/schema automatically.
+
+STEP 5
+Initialize Database
+
+Run Prisma migrations/setup.
+
+STEP 6
+Finish
+
+Show:
+
+"Your Retail CRM is ready."
+
+Then open the CRM.
+
+There should be NO branch setup step.
+
+==================================================
+PART 22 — LOCAL DATABASE
+==================================================
+
+The customer CRM database is:
+
+LOCAL MYSQL
+
+The customer's MySQL credentials must never be sent to your License API.
+
+The License API must know nothing about their MySQL password.
+
+The architecture must remain:
+
+Customer PC:
+
+Electron
+  ↓
+Local NestJS
+  ↓
+Local MySQL
+
+Online:
+
+Desktop
+  ↓ HTTPS
+License API
+  ↓
+Neon License DB
+
+These two systems must remain separated.
+
+==================================================
+PART 23 — SINGLE-SHOP DATABASE CLEANUP
+==================================================
+
+Audit the Prisma schema and backend.
+
+Remove unnecessary:
+
+Branch models
+branchId
+branch relations
+branch DTOs
+branch services
+branch controllers
+branch queries
+branch filters
+branch joins
+branch permissions
+
+where safe.
+
+Update:
+
+Sales
+Products
+Inventory
+Customers
+Suppliers
+Expenses
+Loans
+Purchase Orders
+Dashboard
+Reports
+Settings
+Audit logs
+
+so they work naturally without branches.
+
+There must be no broken references after this cleanup.
+
+Run Prisma validation and generate.
+
+Run migrations safely.
+
+Do NOT destroy existing useful data without a migration strategy.
+
+==================================================
+PART 24 — REPORTS
+==================================================
+
+Reports should be single-shop reports.
+
+Remove:
+
+- Revenue by branch
+- Sales by branch
+- Branch performance
+- Branch comparison
+
+Replace with:
+
+- Sales report
+- Profit report
+- Expense report
+- Product performance
+- Top products
+- Inventory report
+- Customer balances
+- Supplier balances
+- Payment method report
+- Daily/monthly revenue trends
+
+Everything should use local MySQL data.
+
+==================================================
+PART 25 — SEARCH THE ENTIRE PROJECT
+==================================================
+
+Before finishing, search the entire desktop project for:
+
+branch
+branches
+branchId
+branch_id
+top-branches
+revenue-by-branch
+sales-by-branch
+
+Find every remaining reference.
+
+For every result:
+
+1. Determine whether it is still necessary.
+2. Remove it if it belongs to multi-branch functionality.
+3. Refactor it if it is required for compatibility.
+4. Do not leave dead branch UI or broken code.
+
+Also search for:
+
+Cloudinary
+cloudinary
+upload preset
+cloudinary upload
+
+Remove cloud image dependencies from the desktop edition.
+
+==================================================
+PART 26 — TESTING
+==================================================
+
+After implementation, test the entire application.
+
+Backend:
+
+- Build
+- Prisma generate
+- Database initialization
+- Authentication
+- Product CRUD
+- Product image upload
+- Product image retrieval
+- Inventory
+- POS
+- Sales
+- Customers
+- Suppliers
+- Expenses
+- Loans
+- Purchase Orders
+- Dashboard
+- Reports
+- Settings
+- Audit logs
+
+Verify everything works against MySQL.
+
+Frontend:
+
+- Login
+- Dashboard
+- Products
+- Product images
+- POS
+- Sales
+- Customers
+- Suppliers
+- Expenses
+- Loans
+- Purchase Orders
+- Reports
+- Settings
+
+License:
+
+- Generate license
+- Activate license
+- Invalid license
+- Expired license
+- Suspended license
+- Revoked license
+- Device binding
+- Device limit
+- Revalidation
+- Offline operation
+- Signature verification
+- Device reset
+
+==================================================
+PART 27 — ELECTRON
+==================================================
+
+Make sure the final desktop application works as:
+
+Retail CRM.exe
+
+The customer should NOT need:
+
+- Node.js
+- npm
+- pnpm
+- Git
+- Docker
+- Terminal
+- Your source code
+
+The installer should package the application properly.
+
+Customer workflow:
+
+Install Retail CRM
+       ↓
+Open application
+       ↓
+License key
+       ↓
+Create admin
+       ↓
+Configure shop
+       ↓
+Configure MySQL
+       ↓
+Initialize database
+       ↓
+Use CRM
+
+==================================================
+PART 28 — DO NOT BREAK THE ONLINE VERSION
+==================================================
+
+This is extremely important.
+
+The online version:
+
+C:\Users\amoh0\Desktop\CRMs\retail-crm
+
+must remain untouched.
+
+The desktop version:
+
+C:\Users\amoh0\Desktop\CRMs\retail-crm-desktop
+
+is the only project being modified.
+
+Do not copy changes backward into the online project.
+
+==================================================
+PART 29 — IMPLEMENTATION ORDER
+==================================================
+
+Work in this order:
+
+PHASE 7A
+Create License API
+
+PHASE 7B
+Create Neon License Database
+
+PHASE 7C
+Create License Dashboard
+
+PHASE 7D
+License generation
+
+PHASE 7E
+Customer/license/device management
+
+PHASE 7F
+Desktop license activation
+
+PHASE 7G
+Signed activation responses
+
+PHASE 7H
+Offline validation/grace period
+
+PHASE 7I
+Remove multi-branch architecture
+
+PHASE 7J
+Single-shop dashboard redesign
+
+PHASE 7K
+Final integration
+
+PHASE 7L
+Full testing
+
+Do not stop after creating a plan.
+
+Actually implement each phase.
+
+==================================================
+FINAL REQUIREMENT
+==================================================
+
+At the end provide a detailed report containing:
+
+1. Files created
+2. Files modified
+3. Files deleted
+4. Database schema changes
+5. Branch functionality removed
+6. Dashboard changes
+7. License API architecture
+8. License dashboard features
+9. License database schema
+10. Device binding implementation
+11. Offline activation implementation
+12. Security measures
+13. Product image/MySQL implementation
+14. Electron changes
+15. Commands used
+16. Tests performed
+17. Tests that could not be performed
+18. Any remaining risks
+19. Exact command to run the license dashboard
+20. Exact command to run the license API
+21. Exact command to run the desktop CRM in development
+22. Exact command to build the Windows installer
+23. Where the generated .exe will be located
+
+Most importantly:
+
+DO NOT just tell me what should be done.
+
+IMPLEMENT IT.
+
+If you encounter a problem, investigate it, fix it, test the fix, and continue.
+
+Do not stop at the end of one phase asking for permission unless you are genuinely blocked by a decision that cannot safely be made from the existing code.

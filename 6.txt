@@ -1,0 +1,332 @@
+Continue fixing ALL remaining TypeScript/build errors in the retail-crm-desktop project.
+
+IMPORTANT:
+Do not stop after fixing a few errors. Continue until the backend builds successfully with ZERO TypeScript errors.
+
+The current goal is NOT to build the final .exe yet. The goal is to get the entire desktop project into a clean, buildable, testable state before the final packaging phase.
+
+PROJECT CONTEXT:
+- This is the offline Windows desktop version of Retail CRM.
+- The online project must remain untouched.
+- Desktop project uses:
+  - Electron
+  - NestJS backend
+  - Prisma
+  - MySQL
+  - Local/offline operation
+- This is now a SINGLE-SHOP application.
+- There are NO branches in the desktop version.
+- Product images are stored directly in MySQL, not Cloudinary.
+- Licensing is handled through a separate online License API + Neon database.
+- Desktop license activation/device binding/offline validation has already been implemented.
+- The first-run setup wizard already exists.
+- Do not undo already completed functionality.
+
+CURRENT STATUS:
+The previous Phase 7 work removed branchId from the core architecture, but approximately 30–40 TypeScript errors remain because some controllers, services, DTOs, modules, Prisma references, and frontend code still expect the old multi-branch architecture.
+
+YOUR TASK:
+
+1. FIRST inspect the entire current project and run the appropriate TypeScript/build command to get the COMPLETE current error list.
+
+2. Fix the errors systematically.
+
+3. SINGLE-SHOP ARCHITECTURE:
+Remove ALL remaining branch dependencies from the desktop application.
+
+Search the entire project for things such as:
+- branchId
+- branchIds
+- branch
+- branches
+- Branch
+- InventoryTransfer
+- topBranches
+- branch revenue
+- branch selection
+- branch filtering
+- branch switching
+- branch permissions
+
+Do NOT blindly delete every occurrence of the word "branch". Determine whether it is part of the old multi-branch business logic.
+
+The final desktop CRM should represent ONE physical shop only.
+
+Remove/update:
+- branch DTO fields
+- branch controller dependencies
+- branch service dependencies
+- branch Prisma relations
+- branch filters
+- branch selectors
+- branch transfer functionality
+- branch-based permissions
+- branch dashboard analytics
+- branch revenue charts
+- branch API endpoints
+- branch frontend pages/components
+- branch-related navigation
+- branch-related validation
+
+Do NOT break unrelated functionality.
+
+4. UPDATE ALL CONTROLLERS AND SERVICES:
+Adapt every controller/service whose method signatures still pass branchId.
+
+Pay particular attention to:
+- sales
+- inventory
+- expenses
+- customers
+- suppliers
+- dashboard
+- users
+- authentication
+- reports
+- purchase orders
+- loans
+- settings
+- audit
+- payments
+- products
+
+The application must compile against the new single-shop Prisma schema.
+
+5. PRISMA:
+Verify that the active Prisma schema is the correct SINGLE-SHOP MySQL schema.
+
+Do not accidentally continue using the old PostgreSQL/multi-branch schema.
+
+Run:
+- prisma generate
+- prisma validate
+- appropriate database/schema checks if needed
+
+Do not destroy existing customer data unless absolutely necessary.
+
+6. FRONTEND:
+After the backend is clean, inspect the frontend for remaining branch-related code.
+
+Remove or replace:
+- branch selectors
+- branch dropdowns
+- "Top Branches"
+- branch revenue charts
+- branch statistics
+- branch filters
+- branch management pages
+- branch navigation
+- branch-related API calls
+
+Replace the dashboard branch-revenue visualization with a useful single-shop metric.
+
+Possible replacement:
+- Revenue by product
+- Top-selling products
+- Sales by payment method
+- Revenue trend
+- Gross profit trend
+- Expenses vs revenue
+- Low-stock products
+
+Choose the metric that best fits the existing dashboard design and data.
+
+7. PRODUCT IMAGES:
+Keep the new MySQL image-storage architecture.
+
+Do NOT reintroduce Cloudinary.
+
+Product images must:
+- upload into MySQL
+- remain available offline
+- be retrieved by the local backend
+- display correctly in Products
+- display correctly in POS
+- work after the application is packaged into Electron
+- not depend on an external image hosting service
+
+8. AUTHENTICATION:
+Do not remove or weaken authentication while fixing branch errors.
+
+Preserve:
+- password hashing
+- JWT authentication
+- session handling
+- password history
+- account security
+- audit logging
+- authorization
+
+9. LICENSE SYSTEM:
+Do not remove or weaken the existing license functionality.
+
+Preserve:
+- online license activation
+- device binding
+- signed activation response
+- encrypted local license/config storage
+- periodic validation
+- offline grace period
+- revoked/expired license handling
+
+The license API remains separate from the local CRM backend.
+
+10. ELECTRON:
+Do not break the existing Electron architecture.
+
+Preserve:
+- secure preload bridge
+- context isolation
+- encrypted configuration
+- first-run wizard
+- local NestJS backend
+- local MySQL connection
+- writable application-data paths
+- local-only backend binding
+
+11. ENVIRONMENT:
+Do not hardcode production secrets.
+
+Use environment variables/placeholders where appropriate.
+
+Do NOT expose or print any real:
+- JWT secrets
+- database passwords
+- Neon credentials
+- API secrets
+
+12. ERROR-FIXING LOOP:
+
+After making the first fixes:
+
+Run the backend build again.
+
+Then:
+- collect ALL remaining errors
+- fix them
+- build again
+- repeat
+
+Do not stop simply because the number of errors becomes smaller.
+
+Continue until:
+
+BUILD SUCCESSFUL
+ZERO TYPESCRIPT ERRORS
+ZERO Prisma generation/validation errors
+
+13. THEN CHECK THE FRONTEND:
+
+Run the frontend typecheck/build.
+
+Fix all errors caused by the single-shop conversion.
+
+Again, repeat until the frontend builds successfully.
+
+14. THEN RUN THE APPLICATION:
+
+Create a simple:
+
+RUN-DESKTOP.bat
+
+at the project root so I can easily start the desktop application for manual testing.
+
+The script should:
+- check required dependencies where practical
+- start the local backend
+- start the frontend/Electron application
+- show useful errors instead of silently closing
+- work from a normal Windows CMD/PowerShell environment
+
+Do NOT create the final installer yet.
+
+15. FINAL VERIFICATION:
+
+Before stopping, verify:
+
+Backend:
+- pnpm build succeeds
+- Prisma generate succeeds
+- Prisma validate succeeds
+- MySQL connection works
+- backend starts on localhost
+- login works
+- products work
+- product images work
+- inventory works
+- POS works
+- sales work
+- customers work
+- suppliers work
+- expenses work
+- loans work
+- purchase orders work
+- dashboard works
+- reports work
+- settings work
+- audit/session functionality works
+
+Frontend:
+- build succeeds
+- no branch UI remains
+- Products page works
+- POS works
+- Dashboard works
+- product images display
+- authentication works
+
+Electron:
+- application starts
+- setup wizard starts on fresh configuration
+- license activation screen works
+- MySQL setup works
+- admin creation works
+- app launches after setup
+
+License:
+- existing license integration still works
+- do not replace it with a stub
+
+16. CLEANUP:
+
+Remove temporary:
+- test scripts
+- temporary logs
+- debug files
+- generated test data
+- abandoned migration experiments
+
+BUT DO NOT DELETE useful documentation or completed project files.
+
+17. IMPORTANT:
+Do not stop and ask me whether you should fix the next error.
+
+You have authorization to continue fixing the project.
+
+Work through the entire error chain yourself.
+
+Only stop when:
+A) the backend builds with zero errors,
+B) the frontend builds with zero errors,
+C) RUN-DESKTOP.bat exists,
+D) the single-shop architecture is consistent,
+E) the existing license system still works,
+F) product images still use MySQL,
+G) the project is ready for the final manual testing phase before creating the .exe.
+
+At the end, give me a concise FINAL STATUS REPORT containing:
+
+- Backend build: PASS/FAIL
+- Frontend build: PASS/FAIL
+- Prisma: PASS/FAIL
+- MySQL: PASS/FAIL
+- Single-shop conversion: PASS/FAIL
+- Product images/MySQL: PASS/FAIL
+- Authentication: PASS/FAIL
+- License system: PASS/FAIL
+- Electron: PASS/FAIL
+- RUN-DESKTOP.bat: PASS/FAIL
+- Remaining errors, if any
+- Exact command I should run to start the project for manual testing
+
+Do not build the final .exe yet.

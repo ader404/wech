@@ -1,0 +1,8 @@
+{
+  "status": {
+    "PENDING": "قيد الانتظار",
+    "PARTIAL": "جزئي",
+    "RECEIVED": "مستلم",
+    "CANCELLED": "ملغى"
+  }
+}

@@ -1,0 +1,145 @@
+Phase 5 is complete, but I want to clarify one critical requirement that must NOT be missed.
+
+The desktop application must NOT store product images on the filesystem as the final storage solution.
+
+My requirement is:
+
+Product image
+→ Local NestJS API
+→ MySQL
+→ Product/POS retrieves image through API
+
+I want product images stored directly in the local MySQL database.
+
+Do the following before continuing to Phase 6:
+
+1. Inspect the current desktop implementation and determine exactly where product images are currently stored.
+
+2. If they are currently stored in:
+   backend/uploads/
+   or another filesystem directory,
+   this is NOT the final solution.
+
+3. Implement proper MySQL image storage.
+
+Prefer a separate ProductImage table/model rather than putting a large BLOB directly inside the Product table if that produces a cleaner architecture.
+
+The image table should contain appropriate fields such as:
+
+- id
+- productId
+- image binary data (MySQL BLOB/LONGBLOB as appropriate)
+- mimeType
+- original filename
+- file size
+- createdAt
+- updatedAt
+
+Use Prisma correctly for MySQL binary data.
+
+4. Product creation:
+   - User selects an image.
+   - Frontend sends the image to NestJS.
+   - NestJS validates it.
+   - NestJS stores the binary image in MySQL.
+   - No Cloudinary.
+   - No external image service.
+   - No permanent filesystem dependency.
+
+5. Product editing:
+   - Allow replacing the existing image.
+   - Ensure the old image is properly replaced/deleted.
+   - Do not leave orphaned image records.
+
+6. Product deletion:
+   - Properly remove the associated image record.
+   - Do not leave orphaned database records.
+
+7. Image retrieval:
+
+Create an authenticated endpoint similar to:
+
+GET /api/products/:id/image
+
+It must:
+
+- authenticate the request
+- find the product/image
+- return the binary data
+- set the correct Content-Type
+- return 404 when no image exists
+
+8. IMPORTANT:
+
+Do NOT return image binary/base64 data inside the normal:
+
+GET /api/products
+
+response.
+
+The normal product response should contain only a lightweight reference, for example:
+
+imageUrl: "/api/products/<id>/image"
+
+9. Products page:
+
+Make the Products page retrieve images through that endpoint.
+
+10. POS:
+
+Make POS retrieve the same MySQL-backed images.
+
+Images must continue working when:
+
+- Internet is disconnected
+- the application is restarted
+- the computer is offline
+- the backend is restarted
+
+11. Remove the actual Cloudinary dependency from the desktop implementation.
+
+The original online project must remain untouched.
+
+12. Test with a REAL image:
+
+- upload JPEG
+- verify image record exists in MySQL
+- verify binary data exists
+- retrieve image through API
+- verify Content-Type
+- display it in Products
+- display it in POS
+- replace image
+- verify replacement
+- delete product
+- verify image record is removed
+
+13. Also verify that no normal product API response contains huge base64 image data.
+
+14. Build the backend and frontend after the changes.
+
+15. Re-test login, Products, POS and image upload/retrieval.
+
+Only after this requirement is genuinely implemented and tested should you continue to Phase 6.
+
+Do NOT modify:
+
+C:\Users\amoh0\Desktop\CRMs\retail-crm
+
+Only modify:
+
+C:\Users\amoh0\Desktop\CRMs\retail-crm-desktop
+
+At the end, report:
+
+- exact database changes
+- exact files changed
+- image upload flow
+- image retrieval flow
+- Products implementation
+- POS implementation
+- Cloudinary removal status
+- tests performed
+- whether images work completely offline
+
+Then continue to Phase 6 automatically if everything passes.

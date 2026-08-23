@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Retail CRM Setup</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #0B0E14;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .wizard-container {
+      background: #111827;
+      border-radius: 12px;
+      box-shadow: 0 0 60px rgba(34, 211, 238, 0.3);
+      border: 1px solid rgba(34, 211, 238, 0.2);
+      width: 100%;
+      max-width: 650px;
+      overflow: hidden;
+    }
+    .wizard-header {
+      background: linear-gradient(135deg, rgba(34, 211, 238, 0.1) 0%, rgba(79, 209, 197, 0.1) 100%);
+      border-bottom: 1px solid rgba(34, 211, 238, 0.2);
+      color: #F8FAFC;
+      padding: 30px;
+      text-align: center;
+    }
+    .wizard-header h1 { font-size: 28px; margin-bottom: 8px; }
+    .wizard-header p { opacity: 0.8; font-size: 14px; color: #94A3B8; }
+    .progress-bar {
+      height: 4px;
+      background: rgba(30, 41, 59, 0.8);
+      margin-top: 20px;
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #22D3EE 0%, #4FD1C5 100%);
+      transition: width 0.3s ease;
+      width: 0%;
+    }
+    .wizard-body { padding: 40px; background: #111827; }
+    .step { display: none; }
+    .step.active { display: block; }
+    .step h2 { font-size: 22px; margin-bottom: 10px; color: #F8FAFC; }
+    .step p { color: #94A3B8; margin-bottom: 25px; font-size: 14px; }
+    .form-group { margin-bottom: 20px; }
+    .form-group label { display: block; margin-bottom: 8px; font-weight: 500; color: #F8FAFC; font-size: 14px; }
+    .form-group input, .form-group select {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid rgba(34, 211, 238, 0.2);
+      border-radius: 6px;
+      font-size: 14px;
+      background: #0B0E14;
+      color: #F8FAFC;
+    }
+    .form-group input:focus, .form-group select:focus {
+      outline: none;
+      border-color: #22D3EE;
+      box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.1);
+    }
+    .form-group small { display: block; margin-top: 5px; color: #64748B; font-size: 12px; }
+    .button-group { display: flex; gap: 12px; margin-top: 30px; }
+    .btn {
+      padding: 12px 24px;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      flex: 1;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #22D3EE 0%, #4FD1C5 100%);
+      color: #0B0E14;
+    }
+    .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(34, 211, 238, 0.4); }
+    .btn-secondary {
+      background: #1E293B;
+      color: #F8FAFC;
+      border: 1px solid rgba(34, 211, 238, 0.2);
+    }
+    .btn-secondary:hover { background: #334155; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .status-message {
+      padding: 12px;
+      border-radius: 6px;
+      margin-bottom: 20px;
+      font-size: 14px;
+    }
+    .status-success {
+      background: rgba(79, 209, 197, 0.1);
+      border: 1px solid rgba(79, 209, 197, 0.3);
+      color: #4FD1C5;
+    }
+    .status-error {
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: #EF4444;
+    }
+    .spinner {
+      border: 3px solid rgba(34, 211, 238, 0.2);
+      border-top: 3px solid #22D3EE;
+      border-radius: 50%;
+      width: 24px;
+      height: 24px;
+      animation: spin 1s linear infinite;
+      display: inline-block;
+      margin-right: 10px;
+    }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div class="wizard-container">
+    <div class="wizard-header">
+      <h1>Retail CRM Setup</h1>
+      <p>Configure your application in 3 simple steps</p>
+      <div class="progress-bar">
+        <div class="progress-fill" id="progress"></div>
+      </div>
+    </div>
+
+    <div class="wizard-body">
+      <!-- Step 1: Database Setup -->
+      <div class="step active" id="step1">
+        <h2>Database Configuration</h2>
+        <p>Enter your MySQL database credentials</p>
+
+        <div class="form-group">
+          <label>Host</label>
+          <input type="text" id="dbHost" value="localhost" required>
+        </div>
+
+        <div class="form-group">
+          <label>Port</label>
+          <input type="number" id="dbPort" value="3306" required>
+        </div>
+
+        <div class="form-group">
+          <label>Database Name</label>
+          <input type="text" id="dbName" value="retail_crm_desktop" required>
+          <small>Will be created automatically if it doesn't exist</small>
+        </div>
+
+        <div class="form-group">
+          <label>Username</label>
+          <input type="text" id="dbUser" value="root" required>
+        </div>
+
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" id="dbPassword">
+        </div>
+
+        <div id="dbStatus"></div>
+
+        <div class="button-group">
+          <button class="btn btn-primary" id="testDbBtn" onclick="testDatabase()">Test & Continue</button>
+        </div>
+      </div>
+
+      <!-- Step 2: Create Admin Account -->
+      <div class="step" id="step2">
+        <h2>Create Admin Account</h2>
+        <p>Set up your administrator credentials</p>
+
+        <div class="form-group">
+          <label>Full Name</label>
+          <input type="text" id="adminName" required>
+        </div>
+
+        <div class="form-group">
+          <label>Email</label>
+          <input type="email" id="adminEmail" required>
+        </div>
+
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" id="adminPassword" required>
+          <small>Minimum 8 characters</small>
+        </div>
+
+        <div class="form-group">
+          <label>Preferred Language</label>
+          <select id="adminLocale">
+            <option value="ar">العربية (Arabic)</option>
+            <option value="fr">Français (French)</option>
+            <option value="en">English</option>
+          </select>
+        </div>
+
+        <div id="adminStatus"></div>
+
+        <div class="button-group">
+          <button class="btn btn-secondary" onclick="previousStep()">Back</button>
+          <button class="btn btn-primary" onclick="createAdmin()">Create & Continue</button>
+        </div>
+      </div>
+
+      <!-- Step 3: Complete -->
+      <div class="step" id="step3">
+        <h2>Setup Complete!</h2>
+        <p>Your Retail CRM is ready to launch</p>
+
+        <div class="status-success">
+          <strong>✓ Database connected</strong><br>
+          <strong>✓ Admin account created</strong><br>
+          <strong>✓ Application configured</strong>
+        </div>
+
+        <div id="launchStatus"></div>
+
+        <div class="button-group">
+          <button class="btn btn-primary" onclick="launchApp()">Launch Application</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let currentStep = 1
+    let dbConfig = null
+
+    function updateProgress() {
+      const progress = (currentStep / 3) * 100
+      document.getElementById('progress').style.width = progress + '%'
+    }
+
+    function showStep(step) {
+      document.querySelectorAll('.step').forEach(s => s.classList.remove('active'))
+      document.getElementById('step' + step).classList.add('active')
+      currentStep = step
+      updateProgress()
+    }
+
+    function nextStep() {
+      if (currentStep < 3) {
+        showStep(currentStep + 1)
+      }
+    }
+
+    function previousStep() {
+      if (currentStep > 1) {
+        showStep(currentStep - 1)
+      }
+    }
+
+    async function testDatabase() {
+      const btn = document.getElementById('testDbBtn')
+      const status = document.getElementById('dbStatus')
+
+      btn.disabled = true
+      btn.innerHTML = '<span class="spinner"></span>Testing connection...'
+
+      dbConfig = {
+        host: document.getElementById('dbHost').value,
+        port: parseInt(document.getElementById('dbPort').value),
+        database: document.getElementById('dbName').value,
+        username: document.getElementById('dbUser').value,
+        password: document.getElementById('dbPassword').value,
+      }
+
+      try {
+        const result = await window.electronAPI.testDatabase(dbConfig)
+
+        if (result.success) {
+          status.innerHTML = '<div class="status-success">✓ Database connection successful</div>'
+
+          setTimeout(async () => {
+            status.innerHTML = '<div class="status-success"><span class="spinner"></span>Running migrations... This may take a minute.</div>'
+
+            try {
+              await window.electronAPI.runMigration(dbConfig)
+              status.innerHTML = '<div class="status-success">✓ Database initialized successfully!</div>'
+
+              // Wait 2 seconds before moving to next step to ensure tables are ready
+              setTimeout(() => nextStep(), 2000)
+            } catch (err) {
+              status.innerHTML = '<div class="status-error">Migration failed: ' + err.message + '</div>'
+              btn.disabled = false
+              btn.innerHTML = 'Test & Continue'
+            }
+          }, 1000)
+        } else {
+          status.innerHTML = '<div class="status-error">✗ Connection failed: ' + result.error + '</div>'
+          btn.disabled = false
+          btn.innerHTML = 'Test & Continue'
+        }
+      } catch (error) {
+        status.innerHTML = '<div class="status-error">✗ Error: ' + error.message + '</div>'
+        btn.disabled = false
+        btn.innerHTML = 'Test & Continue'
+      }
+    }
+
+    async function createAdmin() {
+      const status = document.getElementById('adminStatus')
+      const adminData = {
+        name: document.getElementById('adminName').value,
+        email: document.getElementById('adminEmail').value,
+        password: document.getElementById('adminPassword').value,
+        locale: document.getElementById('adminLocale').value,
+      }
+
+      if (!adminData.name || !adminData.email || !adminData.password) {
+        status.innerHTML = '<div class="status-error">Please fill all fields</div>'
+        return
+      }
+
+      if (adminData.password.length < 8) {
+        status.innerHTML = '<div class="status-error">Password must be at least 8 characters</div>'
+        return
+      }
+
+      if (!dbConfig) {
+        status.innerHTML = '<div class="status-error">Database configuration missing</div>'
+        return
+      }
+
+      status.innerHTML = '<div class="status-success"><span class="spinner"></span>Creating admin account...</div>'
+
+      try {
+        // Pass both dbConfig and adminData
+        const result = await window.electronAPI.createAdmin({ ...adminData, dbConfig })
+
+        if (result.success) {
+          status.innerHTML = '<div class="status-success">✓ Admin account created</div>'
+          setTimeout(() => nextStep(), 500)
+        } else {
+          status.innerHTML = '<div class="status-error">✗ Failed: ' + result.error + '</div>'
+        }
+      } catch (error) {
+        status.innerHTML = '<div class="status-error">✗ Error: ' + error.message + '</div>'
+      }
+    }
+
+    async function launchApp() {
+      const status = document.getElementById('launchStatus')
+      status.innerHTML = '<div class="status-success"><span class="spinner"></span>Starting application...</div>'
+
+      try {
+        const config = { database: dbConfig }
+        const result = await window.electronAPI.completeSetup(config)
+
+        if (!result.success) {
+          status.innerHTML = '<div class="status-error">✗ Failed to start: ' + result.error + '</div>'
+        }
+      } catch (error) {
+        status.innerHTML = '<div class="status-error">✗ Error: ' + error.message + '</div>'
+      }
+    }
+
+    updateProgress()
+  </script>
+</body>
+</html>

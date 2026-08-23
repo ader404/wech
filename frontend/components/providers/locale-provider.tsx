@@ -46,12 +46,12 @@ import arExpenses from '@/i18n/translations/ar/expenses.json';
 import enEmployees from '@/i18n/translations/en/employees.json';
 import frEmployees from '@/i18n/translations/fr/employees.json';
 import arEmployees from '@/i18n/translations/ar/employees.json';
-import enCameras from '@/i18n/translations/en/cameras.json';
-import frCameras from '@/i18n/translations/fr/cameras.json';
-import arCameras from '@/i18n/translations/ar/cameras.json';
 import enReports from '@/i18n/translations/en/reports.json';
 import frReports from '@/i18n/translations/fr/reports.json';
 import arReports from '@/i18n/translations/ar/reports.json';
+import enReceipt from '@/i18n/translations/en/receipt.json';
+import frReceipt from '@/i18n/translations/fr/receipt.json';
+import arReceipt from '@/i18n/translations/ar/receipt.json';
 import enSettings from '@/i18n/translations/en/settings.json';
 import frSettings from '@/i18n/translations/fr/settings.json';
 import arSettings from '@/i18n/translations/ar/settings.json';
@@ -62,9 +62,9 @@ import arMisc from '@/i18n/translations/ar/misc.json';
 type Locale = 'en' | 'fr' | 'ar';
 
 const MESSAGES: Record<Locale, any> = {
-  en: { ...enCommon, auth: enAuth, dashboard: enDashboard, customers: enCustomers, suppliers: enSuppliers, loans: enLoans, pos: enPos, products: enProducts, profit: enProfit, purchaseOrders: enPurchaseOrders, sales: enSales, revenue: enRevenue, expenses: enExpenses, employees: enEmployees, cameras: enCameras, reports: enReports, settings: enSettings, misc: enMisc },
-  fr: { ...frCommon, auth: frAuth, dashboard: frDashboard, customers: frCustomers, suppliers: frSuppliers, loans: frLoans, pos: frPos, products: frProducts, profit: frProfit, purchaseOrders: frPurchaseOrders, sales: frSales, revenue: frRevenue, expenses: frExpenses, employees: frEmployees, cameras: frCameras, reports: frReports, settings: frSettings, misc: frMisc },
-  ar: { ...arCommon, auth: arAuth, dashboard: arDashboard, customers: arCustomers, suppliers: arSuppliers, loans: arLoans, pos: arPos, products: arProducts, profit: arProfit, purchaseOrders: arPurchaseOrders, sales: arSales, revenue: arRevenue, expenses: arExpenses, employees: arEmployees, cameras: arCameras, reports: arReports, settings: arSettings, misc: arMisc },
+  en: { ...enCommon, auth: enAuth, dashboard: enDashboard, customers: enCustomers, suppliers: enSuppliers, loans: enLoans, pos: enPos, products: enProducts, profit: enProfit, purchaseOrders: enPurchaseOrders, sales: enSales, revenue: enRevenue, expenses: enExpenses, employees: enEmployees, reports: enReports, settings: enSettings, misc: enMisc, receipt: enReceipt },
+  fr: { ...frCommon, auth: frAuth, dashboard: frDashboard, customers: frCustomers, suppliers: frSuppliers, loans: frLoans, pos: frPos, products: frProducts, profit: frProfit, purchaseOrders: frPurchaseOrders, sales: frSales, revenue: frRevenue, expenses: frExpenses, employees: frEmployees, reports: frReports, settings: frSettings, misc: frMisc, receipt: frReceipt },
+  ar: { ...arCommon, auth: arAuth, dashboard: arDashboard, customers: arCustomers, suppliers: arSuppliers, loans: arLoans, pos: arPos, products: arProducts, profit: arProfit, purchaseOrders: arPurchaseOrders, sales: arSales, revenue: arRevenue, expenses: arExpenses, employees: arEmployees, reports: arReports, settings: arSettings, misc: arMisc, receipt: arReceipt },
 };
 
 interface LocaleContextType {

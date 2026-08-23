@@ -2,8 +2,9 @@ import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateSaleDto } from './dto/create-sale.dto';
 import { AddPaymentDto } from './dto/add-payment.dto';
+import { SalesQueryDto } from './dto/sales-query.dto';
 import { NotificationsService } from '../notifications/notifications.service';
-import { PaginationDto, PaginatedResult } from '../../common/dto/pagination.dto';
+import { PaginatedResult } from '../../common/dto/pagination.dto';
 
 const SALE_INCLUDE = {
   customer: true,
@@ -20,12 +21,12 @@ export class SalesService {
     private readonly notifications: NotificationsService,
   ) {}
 
-  async findAll(paginationDto?: PaginationDto): Promise<PaginatedResult<any>> {
-    const page = paginationDto?.page || 1;
-    const limit = paginationDto?.limit || 20;
-    const search = paginationDto?.search || '';
-    const sortBy = paginationDto?.sortBy || 'createdAt';
-    const sortOrder = paginationDto?.sortOrder || 'desc';
+  async findAll(queryDto?: SalesQueryDto): Promise<PaginatedResult<any>> {
+    const page = queryDto?.page || 1;
+    const limit = queryDto?.limit || 20;
+    const search = queryDto?.search || '';
+    const sortBy = queryDto?.sortBy || 'createdAt';
+    const sortOrder = queryDto?.sortOrder || 'desc';
 
     const skip = (page - 1) * limit;
 
@@ -33,11 +34,44 @@ export class SalesService {
       deletedAt: null,  // Exclude soft-deleted sales
     };
 
+    // Search filter
     if (search) {
       where.OR = [
         { invoiceNumber: { contains: search, mode: 'insensitive' as const } },
         { customer: { name: { contains: search, mode: 'insensitive' as const } } },
       ];
+    }
+
+    // Date range filter
+    if (queryDto?.dateFrom || queryDto?.dateTo) {
+      where.createdAt = {};
+      if (queryDto.dateFrom) where.createdAt.gte = new Date(queryDto.dateFrom);
+      if (queryDto.dateTo) where.createdAt.lte = new Date(queryDto.dateTo);
+    }
+
+    // Customer filter
+    if (queryDto?.customerId) {
+      where.customerId = queryDto.customerId;
+    }
+
+    // Payment status filter
+    if (queryDto?.paymentStatus) {
+      where.paymentStatus = queryDto.paymentStatus;
+    }
+
+    // Sale status filter
+    if (queryDto?.status) {
+      where.status = queryDto.status;
+    }
+
+    // Payment method filter
+    if (queryDto?.paymentMethod) {
+      where.paymentMethod = queryDto.paymentMethod;
+    }
+
+    // User/cashier filter
+    if (queryDto?.userId) {
+      where.userId = queryDto.userId;
     }
 
     const [data, total] = await Promise.all([
@@ -232,25 +266,31 @@ export class SalesService {
       }
 
       // If there's a linked loan, cancel it and reverse customer debt
-      if (sale.loan) {
+      if (sale.loan && sale.loan.status !== 'CANCELLED' && sale.loan.status !== 'COMPLETED') {
+        // Reverse only the CURRENTLY OUTSTANDING balance, not the original principal.
+        // If partial debt payments were already made, principalAmount would over-subtract.
+        const outstandingBalance = Number(sale.loan.amountDue);
+
         await tx.loan.update({
           where: { id: sale.loan.id },
           data: { status: 'CANCELLED' },
         });
 
-        if (sale.customerId) {
-          // Reverse the original debt increment (the full amountDue that created the loan)
+        if (sale.customerId && outstandingBalance > 0) {
           await tx.customer.update({
             where: { id: sale.customerId },
-            data: { debt: { decrement: Number(sale.loan.principalAmount) } },
+            data: { debt: { decrement: outstandingBalance } },
           });
         }
       }
 
-      // Update sale status
+      // Update sale status and zero out outstanding balance (no longer collectible)
       const updated = await tx.sale.update({
         where: { id },
-        data: { status: 'REFUNDED' },
+        data: {
+          status: 'REFUNDED',
+          amountDue: 0,
+        },
         include: SALE_INCLUDE,
       });
 
@@ -413,6 +453,53 @@ export class SalesService {
     return this.prisma.sale.update({
       where: { id },
       data: { deletedAt: new Date() },
+      include: SALE_INCLUDE,
+    });
+  }
+
+  async findDeleted(queryDto?: SalesQueryDto): Promise<PaginatedResult<any>> {
+    const page = queryDto?.page || 1;
+    const limit = queryDto?.limit || 20;
+    const skip = (page - 1) * limit;
+
+    const where: any = {
+      deletedAt: { not: null },
+    };
+
+    const [data, total] = await Promise.all([
+      this.prisma.sale.findMany({
+        where,
+        skip,
+        take: limit,
+        include: SALE_INCLUDE,
+        orderBy: { deletedAt: 'desc' },
+      }),
+      this.prisma.sale.count({ where }),
+    ]);
+
+    const totalPages = Math.ceil(total / limit);
+
+    return {
+      data,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages,
+        hasNextPage: page < totalPages,
+        hasPreviousPage: page > 1,
+      },
+    };
+  }
+
+  async restore(id: string) {
+    const sale = await this.prisma.sale.findUnique({ where: { id } });
+    if (!sale) throw new BadRequestException('Sale not found');
+    if (!sale.deletedAt) throw new BadRequestException('Sale is not deleted');
+
+    return this.prisma.sale.update({
+      where: { id },
+      data: { deletedAt: null },
       include: SALE_INCLUDE,
     });
   }

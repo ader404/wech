@@ -1,0 +1,55 @@
+{
+  "title": "المبيعات",
+  "searchPlaceholder": "البحث عن فاتورة أو عميل...",
+  "records": "{count} سجل",
+  "table": {
+    "invoice": "الفاتورة",
+    "customer": "العميل",
+    "branch": "الفرع",
+    "cashier": "أمين الصندوق",
+    "method": "طريقة الدفع",
+    "total": "الإجمالي",
+    "status": "الحالة",
+    "date": "التاريخ"
+  },
+  "walkIn": "عميل عابر",
+  "noSalesYet": "لا توجد مبيعات حتى الآن",
+  "paymentMethods": {
+    "CASH": "نقدًا",
+    "CARD": "بطاقة",
+    "BANK_TRANSFER": "تحويل بنكي",
+    "QR": "رمز QR"
+  },
+  "statuses": {
+    "COMPLETED": "مكتملة",
+    "REFUNDED": "مستردة",
+    "PARTIALLY_REFUNDED": "مستردة جزئيًا",
+    "ON_HOLD": "معلقة"
+  },
+  "detail": {
+    "customer": "العميل",
+    "branch": "الفرع",
+    "cashier": "أمين الصندوق",
+    "payment": "الدفع",
+    "date": "التاريخ",
+    "status": "الحالة",
+    "product": "المنتج",
+    "qty": "الكمية",
+    "price": "السعر",
+    "total": "الإجمالي",
+    "subtotal": "المجموع الفرعي",
+    "discount": "الخصم",
+    "tax": "الضريبة",
+    "receipt": "الإيصال",
+    "refund": "استرداد",
+    "processing": "قيد المعالجة..."
+  },
+  "toast": {
+    "refundSuccess": "تم استرداد البيع",
+    "refundFailed": "فشل الاسترداد",
+    "deleteSuccess": "تم حذف البيع بنجاح",
+    "deleteFailed": "فشل حذف البيع",
+    "restoreSuccess": "تم استعادة البيع بنجاح",
+    "restoreFailed": "فشل استعادة البيع"
+  }
+}

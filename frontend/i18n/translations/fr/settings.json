@@ -1,0 +1,76 @@
+{
+  "title": "Paramètres",
+  "loading": "Chargement...",
+  "saving": "Enregistrement...",
+  "save": "Enregistrer",
+  "cancel": "Annuler",
+
+  "company": {
+    "title": "Entreprise et Reçu",
+    "description": "Affiché sur les reçus imprimés et partagés",
+    "logo": "Logo de l'Entreprise",
+    "uploading": "Téléchargement...",
+    "companyName": "Nom de l'Entreprise",
+    "currency": "Devise",
+    "currencyPlaceholder": "USD",
+    "address": "Adresse",
+    "phone": "Téléphone",
+    "email": "Courriel",
+    "taxId": "Numéro d'Identification Fiscale",
+    "receiptFooter": "Pied de Page du Reçu / Message de Remerciement",
+    "receiptFooterPlaceholder": "Merci pour votre confiance !",
+    "showLogoOnReceipt": "Afficher le Logo sur le Reçu",
+    "showLogoOnReceiptDescription": "Désactiver pour imprimer des reçus en texte uniquement",
+    "receiptLanguage": "Langue du Reçu",
+    "receiptElements": "Éléments du Reçu",
+    "showPhoneOnReceipt": "Afficher le Téléphone sur le Reçu",
+    "showEmailOnReceipt": "Afficher le Courriel sur le Reçu",
+    "showAddressOnReceipt": "Afficher l'Adresse sur le Reçu",
+    "showTaxIdOnReceipt": "Afficher le Numéro Fiscal sur le Reçu",
+    "saveButton": "Enregistrer les Paramètres du Reçu"
+  },
+
+  "branches": {
+    "title": "Succursales",
+    "description": "Gérer vos emplacements de magasin",
+    "addButton": "Ajouter une Succursale",
+    "branchName": "Nom de la Succursale",
+    "address": "Adresse",
+    "phone": "Téléphone",
+    "status": "Statut",
+    "active": "Actif",
+    "inactive": "Inactif",
+    "noBranches": "Aucune succursale pour le moment",
+    "editDialog": "Modifier la Succursale",
+    "addDialog": "Ajouter une Succursale",
+    "branchNamePlaceholder": "ex. Magasin du Centre-ville",
+    "addressPlaceholder": "123 Rue Principale",
+    "phonePlaceholder": "+33 1 55 00 00"
+  },
+
+  "language": {
+    "title": "Préférence de Langue",
+    "description": "Choisissez votre langue préférée pour l'interface",
+    "currentLanguage": "Langue Actuelle",
+    "selectLanguage": "Sélectionner la Langue"
+  },
+
+  "languages": {
+    "en": "English",
+    "fr": "Français",
+    "ar": "العربية"
+  },
+
+  "toasts": {
+    "settingsSaved": "Paramètres du reçu enregistrés",
+    "settingsFailed": "Échec de l'enregistrement des paramètres",
+    "logoUploadFailed": "Échec du téléchargement du logo",
+    "branchCreated": "Succursale créée",
+    "branchCreateFailed": "Échec de la création de la succursale",
+    "branchUpdated": "Succursale mise à jour",
+    "branchUpdateFailed": "Échec de la mise à jour de la succursale",
+    "statusUpdateFailed": "Échec de la mise à jour du statut",
+    "languageUpdated": "Préférence de langue mise à jour",
+    "languageUpdateFailed": "Échec de la mise à jour de la préférence de langue"
+  }
+}

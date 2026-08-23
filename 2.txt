@@ -1,0 +1,434 @@
+I want you to focus ONLY on two critical areas right now:
+
+1. THE LICENSE MANAGEMENT DASHBOARD + NEON
+2. DESKTOP APP STARTUP / FIRST-RUN FLOW
+
+Do NOT build the final .exe yet.
+Do NOT redesign the CRM.
+Do NOT change working business logic unless required for these two areas.
+
+==================================================
+1. LICENSE DASHBOARD
+==================================================
+
+Create/finish a completely SEPARATE project:
+
+retail-crm-license-dashboard/
+
+This is my private admin dashboard for managing licenses for all products I sell, including Retail CRM.
+
+Use a modern production-ready frontend/backend framework.
+
+The dashboard must connect to a NEW dedicated Neon PostgreSQL database.
+
+IMPORTANT:
+This Neon database is ONLY for licensing.
+It must NOT contain the customer's CRM data.
+
+Leave clear placeholders for my credentials:
+
+DATABASE_URL="<PASTE_NEW_NEON_DATABASE_URL_HERE>"
+JWT_SECRET="<PASTE_DASHBOARD_JWT_SECRET_HERE>"
+
+Also create a clear .env.example.
+
+==================================================
+LICENSE DATABASE
+==================================================
+
+Design the Neon schema for:
+
+PRODUCTS
+- id
+- name
+- description
+- version
+- active
+- createdAt
+- updatedAt
+
+CUSTOMERS
+- id
+- name
+- company/shop name
+- email
+- phone
+- notes
+- createdAt
+- updatedAt
+
+LICENSES
+- id
+- licenseKey
+- productId
+- customerId
+- status
+- expiresAt
+- maxDevices
+- createdAt
+- updatedAt
+
+DEVICES
+- id
+- licenseId
+- deviceId
+- deviceName if available
+- activatedAt
+- lastSeenAt
+- status
+
+ACTIVATION EVENTS
+- id
+- licenseId
+- deviceId
+- event type
+- success/failure
+- timestamp
+- IP where appropriate
+- useful metadata
+
+ADMIN USERS
+- id
+- email
+- password hash
+- role
+- createdAt
+
+ADMIN AUDIT LOG
+- admin
+- action
+- target
+- timestamp
+- metadata
+
+Use proper relations, indexes and unique constraints.
+
+License keys must be generated securely and uniquely.
+
+==================================================
+LICENSE DASHBOARD UI
+==================================================
+
+Create a professional admin dashboard with:
+
+Dashboard overview:
+- total products
+- active licenses
+- expired licenses
+- revoked licenses
+- total customers
+- activated devices
+- recent activations
+- recent license events
+
+Products:
+- create product
+- edit product
+- activate/deactivate product
+- see licenses belonging to product
+
+Customers:
+- create customer
+- edit customer
+- view licenses
+- view devices
+
+Licenses:
+- generate license
+- select product
+- select customer
+- expiration date
+- maximum devices
+- status
+- activation count
+- device count
+- last activity
+- revoke license
+- reactivate if appropriate
+
+License detail page:
+- full license information
+- customer
+- product
+- devices
+- activation history
+- validation history
+- revoke/unbind device
+- expiration
+- max devices
+
+Devices:
+- device ID
+- license
+- customer
+- activation date
+- last seen
+- status
+- unbind/revoke device
+
+Audit:
+- admin actions
+- license generation
+- revocation
+- device changes
+- customer changes
+
+==================================================
+LICENSE API
+==================================================
+
+Create/finish the separate License API that the desktop application communicates with.
+
+Architecture MUST be:
+
+CUSTOMER PC
+Electron
+    |
+    | HTTPS
+    v
+LICENSE API
+    |
+    v
+NEON LICENSE DATABASE
+
+The customer's local CRM is separate:
+
+Electron
+    |
+    v
+Local NestJS
+    |
+    v
+Local MySQL
+
+The License API must provide at minimum:
+
+POST /license/activate
+POST /license/validate
+POST /license/deactivate-device
+
+Activation must:
+
+1. Receive license key
+2. Receive device ID
+3. Find license in Neon
+4. Verify license status
+5. Verify expiration
+6. Verify product
+7. Check device limit
+8. Bind device if allowed
+9. Record activation event
+10. Return a signed activation response
+
+Validation must:
+
+- verify license
+- verify expiration
+- verify device binding
+- update lastSeen
+- record validation event
+- return signed response
+
+Never expose the Neon DATABASE_URL to the desktop application.
+
+Never put the License API's private signing secret inside the desktop application.
+
+==================================================
+2. DESKTOP APP STARTUP
+==================================================
+
+Now focus heavily on making the desktop application startup reliable.
+
+The user should be able to launch the application normally without opening terminals.
+
+Create/fix:
+
+RUN-DESKTOP.bat
+
+for development/testing.
+
+It should reliably start:
+
+1. Local MySQL check
+2. Local NestJS backend
+3. Next.js frontend
+4. Electron
+
+Avoid duplicate processes and port conflicts.
+
+Check existing ports before starting anything.
+
+Do not blindly start another backend if one is already running.
+
+==================================================
+FIRST RUN
+==================================================
+
+The Electron application must detect whether setup has already been completed.
+
+FIRST RUN:
+
+Electron
+→ Setup Wizard
+→ License Activation
+→ MySQL Configuration
+→ Test MySQL Connection
+→ Initialize database
+→ Create SUPER_ADMIN
+→ Finish
+→ Open CRM
+
+NORMAL START:
+
+Electron
+→ Check local configuration
+→ Check license status
+→ Start local backend
+→ Start frontend
+→ Open CRM
+
+Do NOT ask the user to manually start NestJS or Next.js in the production application.
+
+==================================================
+LICENSE ACTIVATION UI
+==================================================
+
+The first-run wizard must communicate with the ONLINE License API.
+
+User enters:
+
+LICENSE KEY
+
+Electron sends:
+
+licenseKey
+deviceId
+product identifier/version
+
+to the License API.
+
+If valid:
+
+- bind device
+- save signed activation response securely
+- continue setup
+
+If invalid:
+
+- remain on license step
+- show useful error
+- do not continue
+
+Test:
+
+- valid license
+- invalid license
+- expired license
+- revoked license
+- maximum devices reached
+- already-bound device
+
+==================================================
+SECURE LOCAL CONFIG
+==================================================
+
+Review how Electron stores:
+
+- license activation
+- device ID
+- MySQL credentials
+- configuration
+
+Use secure OS-backed storage where already implemented.
+
+Do NOT create plaintext files containing MySQL passwords or license secrets.
+
+The desktop app must never contain:
+
+- Neon DATABASE_URL
+- License database credentials
+- License server private signing secret
+
+==================================================
+OFFLINE STARTUP
+==================================================
+
+After successful activation:
+
+Disconnect internet.
+
+The CRM should still start and operate locally according to the existing offline grace-period implementation.
+
+Normal CRM operations must use:
+
+Electron
+→ Local NestJS
+→ MySQL
+
+and must NOT require Neon.
+
+Only license activation/validation requires the online License API.
+
+Test:
+
+ONLINE:
+License activation → setup → CRM
+
+OFFLINE AFTER ACTIVATION:
+Start app → CRM opens → normal CRM operations work
+
+==================================================
+FINAL TEST
+==================================================
+
+Before stopping, actually run everything.
+
+Test:
+
+A. Start from RUN-DESKTOP.bat
+B. Open Electron
+C. Complete first-run wizard
+D. Activate a real test license from Neon
+E. Confirm device appears in License Dashboard
+F. Confirm activation event appears
+G. Confirm customer/license/device information is correct
+H. Restart the desktop app
+I. Confirm it starts without the wizard again
+J. Disconnect internet
+K. Start desktop app
+L. Confirm offline CRM works
+
+Also verify that the License Dashboard shows the activation immediately after activation.
+
+Create:
+
+LICENSE-SYSTEM-TEST-REPORT.md
+
+and include:
+
+- Neon connection: PASS/FAIL
+- License Dashboard: PASS/FAIL
+- License generation: PASS/FAIL
+- License activation: PASS/FAIL
+- Device binding: PASS/FAIL
+- Activation events: PASS/FAIL
+- License validation: PASS/FAIL
+- Desktop first startup: PASS/FAIL
+- Desktop restart: PASS/FAIL
+- Offline startup: PASS/FAIL
+- MySQL connection: PASS/FAIL
+- Remaining problems
+
+IMPORTANT:
+
+Do not tell me "complete" simply because the projects compile.
+
+Actually run the dashboard, License API and desktop startup flow and verify the data moves correctly:
+
+License Dashboard
+→ Neon
+→ License API
+→ Electron
+→ Local CRM
+
+Do NOT create the final .exe yet.

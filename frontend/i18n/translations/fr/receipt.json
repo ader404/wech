@@ -1,0 +1,29 @@
+{
+  "date": "Date",
+  "cashier": "Caissier",
+  "customer": "Client",
+  "phone": "Téléphone",
+  "paymentMethod": "Mode de paiement",
+  "item": "Article",
+  "qty": "Qté",
+  "price": "Prix",
+  "disc": "Rem",
+  "total": "Total",
+  "subtotal": "Sous-total",
+  "discount": "Remise",
+  "tax": "Taxe",
+  "amountPaid": "Montant payé",
+  "amountDue": "Montant dû",
+  "paymentStatus": "Statut du paiement",
+  "paymentMethods": {
+    "CASH": "Espèces",
+    "CARD": "Carte",
+    "BANK_TRANSFER": "Virement bancaire",
+    "QR": "Code QR"
+  },
+  "paymentStatuses": {
+    "PAID": "PAYÉ",
+    "PARTIALLY_PAID": "PARTIEL",
+    "UNPAID": "IMPAYÉ"
+  }
+}

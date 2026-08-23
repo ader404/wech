@@ -1,0 +1,46 @@
+{
+  "list": {
+    "title": "الموظفون",
+    "searchPlaceholder": "البحث عن الموظفين...",
+    "addButton": "إضافة موظف",
+    "table": {
+      "name": "الاسم",
+      "email": "البريد الإلكتروني",
+      "role": "الدور",
+      "branch": "الفرع",
+      "phone": "الهاتف",
+      "status": "الحالة"
+    },
+    "loading": "جارٍ التحميل...",
+    "empty": "لم يتم العثور على موظفين",
+    "roles": {
+      "OWNER": "المالك",
+      "MANAGER": "المدير",
+      "CASHIER": "أمين الصندوق"
+    },
+    "status": {
+      "active": "نشط",
+      "inactive": "غير نشط"
+    },
+    "dialog": {
+      "addTitle": "إضافة موظف",
+      "editTitle": "تعديل الموظف",
+      "fields": {
+        "fullName": "الاسم الكامل",
+        "password": "كلمة المرور",
+        "newPassword": "كلمة مرور جديدة (اتركها فارغة للاحتفاظ بالحالية)",
+        "role": "الدور",
+        "branch": "الفرع",
+        "branchPlaceholder": "بدون"
+      },
+      "saving": "جارٍ الحفظ..."
+    },
+    "toasts": {
+      "created": "تم إنشاء الموظف",
+      "updated": "تم تحديث الموظف",
+      "createFailed": "فشل إنشاء الموظف",
+      "updateFailed": "فشل تحديث الموظف",
+      "statusFailed": "فشل تحديث الحالة"
+    }
+  }
+}

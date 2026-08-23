@@ -1,0 +1,25 @@
+                    YOUR ONLINE LICENSE SYSTEM
+                         Neon PostgreSQL
+                              ▲
+                              │ HTTPS
+                              │
+                    License Dashboard
+                    (you control this)
+                              │
+                              │
+                         License API
+                              ▲
+                              │
+                              │ activation / validation
+                              │
+                    ┌─────────┴─────────┐
+                    │ Customer's PC     │
+                    │                   │
+                    │ Retail CRM.exe    │
+                    │       │           │
+                    │       ▼           │
+                    │ Local NestJS API  │
+                    │       │           │
+                    │       ▼           │
+                    │   Local MySQL     │
+                    └───────────────────┘

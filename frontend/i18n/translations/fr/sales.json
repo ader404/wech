@@ -1,0 +1,55 @@
+{
+  "title": "Ventes",
+  "searchPlaceholder": "Rechercher une facture ou un client...",
+  "records": "{count} enregistrements",
+  "table": {
+    "invoice": "Facture",
+    "customer": "Client",
+    "branch": "Succursale",
+    "cashier": "Caissier",
+    "method": "Méthode",
+    "total": "Total",
+    "status": "Statut",
+    "date": "Date"
+  },
+  "walkIn": "Client de passage",
+  "noSalesYet": "Aucune vente pour le moment",
+  "paymentMethods": {
+    "CASH": "Espèces",
+    "CARD": "Carte",
+    "BANK_TRANSFER": "Virement bancaire",
+    "QR": "QR"
+  },
+  "statuses": {
+    "COMPLETED": "Terminée",
+    "REFUNDED": "Remboursée",
+    "PARTIALLY_REFUNDED": "Partiellement remboursée",
+    "ON_HOLD": "En attente"
+  },
+  "detail": {
+    "customer": "Client",
+    "branch": "Succursale",
+    "cashier": "Caissier",
+    "payment": "Paiement",
+    "date": "Date",
+    "status": "Statut",
+    "product": "Produit",
+    "qty": "Qté",
+    "price": "Prix",
+    "total": "Total",
+    "subtotal": "Sous-total",
+    "discount": "Remise",
+    "tax": "Taxe",
+    "receipt": "Reçu",
+    "refund": "Rembourser",
+    "processing": "Traitement..."
+  },
+  "toast": {
+    "refundSuccess": "Vente remboursée",
+    "refundFailed": "Échec du remboursement",
+    "deleteSuccess": "Vente supprimée avec succès",
+    "deleteFailed": "Échec de la suppression de la vente",
+    "restoreSuccess": "Vente restaurée avec succès",
+    "restoreFailed": "Échec de la restauration de la vente"
+  }
+}

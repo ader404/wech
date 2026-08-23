@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea'
 import { toast } from 'sonner'
 import api from '@/lib/api'
+import { formatCurrency } from '@/lib/utils'
 
 interface ProductRow {
   id: string
@@ -35,16 +36,10 @@ interface Supplier {
   companyName: string
 }
 
-interface Branch {
-  id: string
-  name: string
-}
-
 export default function BulkProductPurchasePage() {
   const t = useTranslations('products')
   const router = useRouter()
   const [supplierId, setSupplierId] = useState('')
-  const [branchId, setBranchId] = useState('')
   const [expectedDelivery, setExpectedDelivery] = useState('')
   const [notes, setNotes] = useState('')
   const [products, setProducts] = useState<ProductRow[]>([
@@ -59,11 +54,6 @@ export default function BulkProductPurchasePage() {
   const { data: suppliers = [] } = useQuery<Supplier[]>({
     queryKey: ['suppliers'],
     queryFn: () => api.get('/suppliers?limit=100').then(res => res.data.data || res.data)
-  })
-
-  const { data: branches = [] } = useQuery<Branch[]>({
-    queryKey: ['branches'],
-    queryFn: () => api.get('/branches').then(res => res.data)
   })
 
   const bulkPurchaseMutation = useMutation({
@@ -110,11 +100,6 @@ export default function BulkProductPurchasePage() {
   }
 
   const validateForm = () => {
-    if (!branchId) {
-      toast.error(t('bulkPurchase.toasts.selectBranch'))
-      return false
-    }
-
     if (!supplierId) {
       toast.error(t('bulkPurchase.toasts.selectSupplier'))
       return false
@@ -141,7 +126,6 @@ export default function BulkProductPurchasePage() {
 
     const payload = {
       supplierId,
-      branchId: branchId || undefined,
       products: validProducts.map(p => ({
         name: p.name,
         sku: p.sku,
@@ -184,41 +168,23 @@ export default function BulkProductPurchasePage() {
               <CardTitle>{t('bulkPurchase.generalInfo')}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="branch">{t('bulkPurchase.branch')} *</Label>
-                  <Select value={branchId} onValueChange={setBranchId}>
-                    <SelectTrigger id="branch">
-                      <SelectValue placeholder={t('bulkPurchase.selectBranchPlaceholder')} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {branches.map(branch => (
-                        <SelectItem key={branch.id} value={branch.id}>
-                          {branch.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="supplier">{t('bulkPurchase.supplier')} *</Label>
-                  <Select
-                    value={supplierId}
-                    onValueChange={setSupplierId}
-                  >
-                    <SelectTrigger id="supplier">
-                      <SelectValue placeholder={t('bulkPurchase.selectSupplierPlaceholder')} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {suppliers.map(supplier => (
-                        <SelectItem key={supplier.id} value={supplier.id}>
-                          {supplier.companyName}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="supplier">{t('bulkPurchase.supplier')} *</Label>
+                <Select
+                  value={supplierId}
+                  onValueChange={setSupplierId}
+                >
+                  <SelectTrigger id="supplier">
+                    <SelectValue placeholder={t('bulkPurchase.selectSupplierPlaceholder')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {suppliers.map(supplier => (
+                      <SelectItem key={supplier.id} value={supplier.id}>
+                        {supplier.companyName}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="space-y-2">
@@ -362,7 +328,7 @@ export default function BulkProductPurchasePage() {
                         <div className="flex justify-between text-sm">
                           <span className="text-muted-foreground">{t('bulkPurchase.subtotal')}:</span>
                           <span className="font-medium">
-                            ${(product.costPrice * product.quantity).toFixed(2)}
+                            {formatCurrency(product.costPrice * product.quantity)}
                           </span>
                         </div>
                       </div>

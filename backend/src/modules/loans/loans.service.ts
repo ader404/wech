@@ -2,6 +2,8 @@ import { Injectable, BadRequestException, NotFoundException } from '@nestjs/comm
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateLoanDto } from './dto/create-loan.dto';
 import { CreateLoanPaymentDto } from './dto/create-loan-payment.dto';
+import { LoansQueryDto } from './dto/loans-query.dto';
+import { PaginatedResult } from '../../common/dto/pagination.dto';
 
 const LOAN_INCLUDE = {
   customer: true,
@@ -13,13 +15,83 @@ const LOAN_INCLUDE = {
 export class LoansService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findAll(type?: string) {
-    const where = type ? { type: type as any } : undefined;
-    return this.prisma.loan.findMany({
-      where,
-      include: LOAN_INCLUDE,
-      orderBy: { createdAt: 'desc' },
-    });
+  async findAll(queryDto?: LoansQueryDto): Promise<PaginatedResult<any>> {
+    const page = queryDto?.page || 1;
+    const limit = queryDto?.limit || 20;
+    const search = queryDto?.search || '';
+    const sortBy = queryDto?.sortBy || 'createdAt';
+    const sortOrder = queryDto?.sortOrder || 'desc';
+
+    const skip = (page - 1) * limit;
+
+    const where: any = {};
+
+    // Search filter (on loan number or reason)
+    if (search) {
+      where.OR = [
+        { loanNumber: { contains: search, mode: 'insensitive' as const } },
+        { reason: { contains: search, mode: 'insensitive' as const } },
+      ];
+    }
+
+    // Date range filter
+    if (queryDto?.dateFrom || queryDto?.dateTo) {
+      where.createdAt = {};
+      if (queryDto.dateFrom) where.createdAt.gte = new Date(queryDto.dateFrom);
+      if (queryDto.dateTo) where.createdAt.lte = new Date(queryDto.dateTo);
+    }
+
+    // Customer filter
+    if (queryDto?.customerId) {
+      where.customerId = queryDto.customerId;
+    }
+
+    // Supplier filter
+    if (queryDto?.supplierId) {
+      where.supplierId = queryDto.supplierId;
+    }
+
+    // Status filter
+    if (queryDto?.status) {
+      where.status = queryDto.status;
+    }
+
+    // Type filter
+    if (queryDto?.type) {
+      where.type = queryDto.type === 'CUSTOMER' ? 'CUSTOMER_LOAN' : 'SUPPLIER_LOAN';
+    }
+
+    // Amount range filter
+    if (queryDto?.minAmount !== undefined || queryDto?.maxAmount !== undefined) {
+      where.principalAmount = {};
+      if (queryDto.minAmount !== undefined) where.principalAmount.gte = queryDto.minAmount;
+      if (queryDto.maxAmount !== undefined) where.principalAmount.lte = queryDto.maxAmount;
+    }
+
+    const [data, total] = await Promise.all([
+      this.prisma.loan.findMany({
+        where,
+        skip,
+        take: limit,
+        include: LOAN_INCLUDE,
+        orderBy: { [sortBy]: sortOrder },
+      }),
+      this.prisma.loan.count({ where }),
+    ]);
+
+    const totalPages = Math.ceil(total / limit);
+
+    return {
+      data,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages,
+        hasNextPage: page < totalPages,
+        hasPreviousPage: page > 1,
+      },
+    };
   }
 
   async findOne(id: string) {
@@ -49,6 +121,8 @@ export class LoansService {
           type: dto.type as any,
           customerId: dto.customerId ?? null,
           supplierId: dto.supplierId ?? null,
+          saleId: dto.saleId ?? null,
+          purchaseOrderId: dto.purchaseOrderId ?? null,
           principalAmount: dto.principalAmount,
           amountDue: dto.principalAmount,
           reason: dto.reason,
@@ -188,6 +262,18 @@ export class LoansService {
             });
           }
         }
+
+        // If this loan is linked to a sale, force the sale fully paid too
+        if (loan.saleId) {
+          await tx.sale.update({
+            where: { id: loan.saleId },
+            data: {
+              amountPaid: { increment: remainingDebt },
+              amountDue: 0,
+              paymentStatus: 'PAID',
+            },
+          });
+        }
       }
 
       const updatedLoan = await tx.loan.update({
@@ -233,12 +319,28 @@ export class LoansService {
       return updatedLoan;
     });
   }
-            data: { totalDebt: { increment: unpaidAmount } },
-          });
-        }
-      }
 
-      return updatedLoan;
-    });
+  async getSummary(type?: string) {
+    const where: any = {};
+    if (type && type !== 'ALL') {
+      where.type = type === 'CUSTOMER' ? 'CUSTOMER_LOAN' : 'SUPPLIER_LOAN';
+    }
+
+    const loans = await this.prisma.loan.findMany({ where });
+
+    const summary = loans.reduce(
+      (acc, loan) => {
+        acc.total += Number(loan.principalAmount);
+        acc.paid += Number(loan.amountPaid);
+        acc.outstanding += Number(loan.amountDue);
+        if (loan.status === 'ACTIVE') acc.active++;
+        if (loan.status === 'OVERDUE') acc.overdue++;
+        if (loan.status === 'COMPLETED') acc.completed++;
+        return acc;
+      },
+      { total: 0, paid: 0, outstanding: 0, active: 0, overdue: 0, completed: 0 }
+    );
+
+    return summary;
   }
 }

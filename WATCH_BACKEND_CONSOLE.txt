@@ -1,0 +1,20 @@
+# IMMEDIATE ACTION NEEDED
+
+## Backend is crashing with 500 error on login
+
+### What to do RIGHT NOW:
+
+1. Look at the **Backend API console window** (black terminal)
+2. Try to login in the desktop app
+3. **IMMEDIATELY look at the backend console** - there will be a RED error message
+4. **Tell me EXACTLY what the red error says**
+
+The error message will tell us what's crashing (probably a database field mismatch or missing column).
+
+---
+
+Login with:
+- Email: working@test.com
+- Password: password
+
+Then tell me the RED error from the backend console!

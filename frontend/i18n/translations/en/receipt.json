@@ -1,0 +1,29 @@
+{
+  "date": "Date",
+  "cashier": "Cashier",
+  "customer": "Customer",
+  "phone": "Phone",
+  "paymentMethod": "Payment Method",
+  "item": "Item",
+  "qty": "Qty",
+  "price": "Price",
+  "disc": "Disc",
+  "total": "Total",
+  "subtotal": "Subtotal",
+  "discount": "Discount",
+  "tax": "Tax",
+  "amountPaid": "Amount Paid",
+  "amountDue": "Amount Due",
+  "paymentStatus": "Payment Status",
+  "paymentMethods": {
+    "CASH": "Cash",
+    "CARD": "Card",
+    "BANK_TRANSFER": "Bank Transfer",
+    "QR": "QR Code"
+  },
+  "paymentStatuses": {
+    "PAID": "PAID",
+    "PARTIALLY_PAID": "PARTIAL",
+    "UNPAID": "UNPAID"
+  }
+}

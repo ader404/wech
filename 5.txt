@@ -1,0 +1,1012 @@
+# Retail CRM — License Management Dashboard + Final Pre-EXE Testing
+
+We are building the final Windows offline version of the Retail CRM.
+
+The existing desktop project is:
+
+`C:\Users\amoh0\Desktop\CRMs\retail-crm-desktop`
+
+The original online project is:
+
+`C:\Users\amoh0\Desktop\CRMs\retail-crm`
+
+IMPORTANT:
+
+* Do NOT modify the original online `retail-crm` project.
+* All desktop work must remain inside `retail-crm-desktop`.
+* The desktop CRM is a SINGLE-SHOP application.
+* There are NO branches in the desktop version.
+* The desktop CRM uses local MySQL.
+* The desktop app uses Electron.
+* The local CRM backend uses NestJS.
+* Product images are stored directly in MySQL, NOT Cloudinary.
+* The license system is ONLINE and completely separate from the customer's local CRM/MySQL database.
+* The final desktop application will eventually be packaged as a Windows `.exe`.
+* DO NOT package the final `.exe` yet. We need to test and review the application first.
+
+---
+
+# PART 1 — FIRST: MAKE THE CURRENT DESKTOP PROJECT EASY TO RUN
+
+Before doing anything else, make sure the current desktop project can be started easily for manual testing.
+
+Create a Windows batch file at:
+
+`retail-crm-desktop\RUN-DESKTOP.bat`
+
+This file should:
+
+1. Check that required dependencies are installed.
+2. Start the local NestJS backend.
+3. Start the desktop frontend.
+4. Start Electron if that is the current architecture.
+5. Open/use the correct local ports automatically.
+6. Clearly display which services are running.
+7. Handle failures with useful error messages.
+8. Never start duplicate backend processes if one is already running.
+9. Do not interfere with the original online CRM.
+
+If multiple terminals are required, the `.bat` file may open separate terminal windows for each service.
+
+Also create a simple:
+
+`RUN-DESKTOP-DEV.bat`
+
+if needed for development mode.
+
+The goal is that I can simply double-click:
+
+`RUN-DESKTOP.bat`
+
+and inspect the entire desktop application before creating the final installer.
+
+---
+
+# PART 2 — DO A FULL PRE-TEST BUILD
+
+Before creating the license dashboard, inspect the current desktop project.
+
+Run:
+
+* dependency installation
+* Prisma generation
+* TypeScript compilation
+* NestJS build
+* frontend build
+* Electron development launch
+
+Fix all compilation/build/runtime errors that are caused by the desktop conversion.
+
+Do NOT hide errors by disabling TypeScript checks.
+
+Do NOT use `any` everywhere just to make compilation pass.
+
+Do NOT remove functionality just to make the build pass.
+
+The existing single-shop conversion must remain functional.
+
+---
+
+# PART 3 — VERIFY THE SINGLE-SHOP ARCHITECTURE
+
+The desktop CRM must remain SINGLE-SHOP.
+
+Remove any remaining branch-related functionality from the desktop application.
+
+There must be:
+
+* no branch selector
+* no branch creation
+* no branch switching
+* no branch transfer
+* no branch permissions
+* no branch dashboard
+* no branch revenue comparison
+* no branch-specific inventory
+* no branch-specific sales
+* no branch-specific expenses
+* no branch-specific reports
+
+Inventory should simply belong to the shop.
+
+Sales should simply belong to the shop.
+
+Expenses should simply belong to the shop.
+
+Customers should simply belong to the shop.
+
+Suppliers should simply belong to the shop.
+
+Users should belong to the local installation/shop.
+
+If there are old branch tables or obsolete branch modules that are no longer needed, remove them cleanly from the desktop version.
+
+DO NOT modify the online CRM.
+
+---
+
+# PART 4 — VERIFY PRODUCT IMAGE STORAGE
+
+The desktop CRM must NOT depend on Cloudinary.
+
+Product images must be stored locally in the customer's MySQL database.
+
+Use MySQL BLOB/MEDIUMBLOB/LONGBLOB or another appropriate binary storage strategy depending on the current implementation.
+
+The complete flow must work:
+
+Upload image
+→ backend
+→ MySQL
+→ product record
+→ fetch image
+→ display in Products page
+→ display in POS
+→ display in product details/edit screens
+
+The application must continue working without Internet access after activation.
+
+Do not make Cloudinary or another cloud image provider a required dependency.
+
+Test:
+
+* upload product image
+* save product
+* restart backend
+* restart Electron
+* fetch product
+* display image
+* use product in POS
+* verify image still works offline
+
+---
+
+# PART 5 — CREATE A COMPLETELY SEPARATE LICENSE MANAGEMENT PROJECT
+
+Now create a NEW separate project for managing licenses.
+
+Create it beside the existing projects:
+
+`C:\Users\amoh0\Desktop\CRMs\retail-crm-license-dashboard`
+
+Do NOT put this inside the desktop CRM.
+
+Recommended architecture:
+
+```text
+CRMs/
+│
+├── retail-crm/
+│
+├── retail-crm-desktop/
+│
+└── retail-crm-license-dashboard/
+```
+
+The license dashboard is an ONLINE administration system.
+
+It should have:
+
+Frontend:
+
+* modern latest stable React/Next.js-based UI
+* responsive professional dashboard
+* modern component architecture
+* clean admin interface
+
+Backend:
+
+* latest stable NestJS architecture compatible with the project
+* REST API
+* authentication
+* authorization
+* validation
+* rate limiting
+* secure database access
+
+Database:
+
+* NEW Neon PostgreSQL database
+* completely separate from the CRM's Neon database
+* never connect directly from the browser
+
+---
+
+# PART 6 — IMPORTANT: I WILL PROVIDE A NEW NEON DATABASE
+
+Leave a clearly documented place for me to add the NEW Neon credentials.
+
+For example:
+
+```env
+DATABASE_URL="PASTE_NEW_LICENSE_NEON_DATABASE_URL_HERE"
+JWT_SECRET="PASTE_NEW_LICENSE_DASHBOARD_JWT_SECRET_HERE"
+PORT=4000
+NODE_ENV=development
+
+LICENSE_API_URL="PASTE_LICENSE_API_PUBLIC_URL_HERE"
+```
+
+IMPORTANT:
+
+The new Neon database is ONLY for the license-management system.
+
+Do not reuse the CRM's existing Neon database.
+
+Do not reuse production credentials from the old project.
+
+Do not put `DATABASE_URL` in the frontend.
+
+The browser/frontend must communicate with the license backend API.
+
+The license backend is the only component that communicates with Neon.
+
+---
+
+# PART 7 — LICENSE DATABASE DESIGN
+
+Create a professional license system.
+
+At minimum create entities similar to:
+
+## License
+
+Fields should include:
+
+* id
+* licenseKey
+* productId
+* customerName
+* customerCompany
+* customerEmail
+* customerPhone
+* notes
+* status
+* maxDevices
+* activatedDevices
+* expiresAt
+* createdAt
+* updatedAt
+* lastValidatedAt
+* lastActivationAt
+* revokedAt
+* metadata
+
+Use secure hashing where appropriate.
+
+Do NOT store license secrets unnecessarily in plaintext.
+
+---
+
+## Product
+
+I want to be able to manage multiple products from my dashboard.
+
+Example:
+
+* Retail CRM Desktop
+* Future Product 1
+* Future Product 2
+
+Fields:
+
+* id
+* name
+* slug
+* description
+* version
+* status
+* createdAt
+* updatedAt
+
+A license must belong to a product.
+
+This allows me to sell/manage licenses for multiple products later.
+
+---
+
+## Customer
+
+Create a customer record containing:
+
+* customer name
+* company/shop name
+* email
+* phone
+* country
+* notes
+* createdAt
+* updatedAt
+
+A customer can have multiple licenses.
+
+---
+
+## Device
+
+Track devices activated by each license.
+
+Store only appropriate technical/device information.
+
+Fields may include:
+
+* id
+* licenseId
+* deviceIdHash
+* deviceName
+* operatingSystem
+* appVersion
+* firstActivatedAt
+* lastSeenAt
+* status
+* metadata
+
+Do NOT collect unnecessary sensitive information.
+
+---
+
+## ActivationEvent
+
+Create a complete activation history.
+
+Record:
+
+* license
+* device
+* timestamp
+* event type
+* success/failure
+* reason
+* app version
+* IP address where legally/technically appropriate
+* user agent where appropriate
+* metadata
+
+This will allow the dashboard to show how often a license has been activated/validated.
+
+---
+
+# PART 8 — LICENSE GENERATION
+
+The dashboard must allow me to generate licenses.
+
+Create a professional license generator.
+
+I should be able to select:
+
+Product:
+
+* Retail CRM Desktop
+
+Customer:
+
+* existing customer or create new customer
+
+Maximum devices:
+
+* 1
+* 2
+* 3
+* 5
+* 10
+* custom
+
+Expiration:
+
+* lifetime
+* 30 days
+* 90 days
+* 1 year
+* custom date
+
+Optional:
+
+* notes
+* customer information
+
+Then click:
+
+`Generate License`
+
+Generate a cryptographically strong license key.
+
+Do NOT use predictable sequential keys.
+
+Example format:
+
+`XXXX-XXXX-XXXX-XXXX-XXXX-XXXX`
+
+The actual generation algorithm must be cryptographically secure.
+
+Display the generated key only when appropriate.
+
+Allow me to copy it easily.
+
+---
+
+# PART 9 — LICENSE MANAGEMENT
+
+Dashboard must allow me to:
+
+* view licenses
+* search licenses
+* filter by product
+* filter by customer
+* filter by status
+* filter by expiration
+* view license details
+* revoke license
+* reactivate license
+* deactivate a device
+* increase/decrease device limit
+* extend expiration date
+* change customer information
+* add notes
+* view activation history
+* view device history
+
+Statuses should include something like:
+
+* ACTIVE
+* EXPIRED
+* REVOKED
+* SUSPENDED
+
+Do not allow dangerous state transitions without confirmation.
+
+---
+
+# PART 10 — DEVICE LIMIT
+
+The license must support device limits.
+
+Example:
+
+License:
+
+```text
+Customer: ABC Electronics
+Maximum devices: 1
+```
+
+If the customer activates on one computer:
+
+```text
+1 / 1 devices used
+```
+
+A second computer must be rejected.
+
+The dashboard must allow me to see:
+
+```text
+Device 1
+Windows PC
+Last seen: ...
+Status: ACTIVE
+```
+
+I should be able to deactivate a device from the dashboard.
+
+After deactivation, another device can use that license.
+
+The desktop application must NEVER simply trust a local device count.
+
+The license API is authoritative.
+
+---
+
+# PART 11 — LICENSE ACTIVATION API
+
+Create a secure public API used by the desktop application.
+
+Example:
+
+```text
+POST /api/license/activate
+POST /api/license/validate
+POST /api/license/deactivate
+```
+
+Activation should receive:
+
+* license key
+* product identifier
+* device ID hash
+* app version
+* operating system information
+* appropriate metadata
+
+The API should:
+
+1. Validate the license.
+2. Check status.
+3. Check expiration.
+4. Check product.
+5. Check device limit.
+6. Check whether this device is already activated.
+7. Register the device if allowed.
+8. Record an ActivationEvent.
+9. Return a signed activation response.
+
+---
+
+# PART 12 — SIGNED LICENSE RESPONSES
+
+The desktop application must not blindly trust a normal JSON response.
+
+Use a secure asymmetric signing approach if practical.
+
+Prefer:
+
+* private signing key ONLY on the license server
+* public verification key embedded in the desktop application
+
+The license server signs activation/validation responses.
+
+The desktop app verifies the signature locally.
+
+Never put the private signing key inside:
+
+* Electron
+* frontend
+* desktop backend
+* GitHub
+* installer
+
+The private key belongs ONLY on the license server.
+
+---
+
+# PART 13 — OFFLINE OPERATION
+
+The CRM is primarily offline.
+
+After successful activation:
+
+```text
+Internet
+   ↓
+License API
+   ↓
+Activation
+   ↓
+Encrypted local license configuration
+   ↓
+CRM can operate offline
+```
+
+Normal CRM operations must NOT require Internet.
+
+The local CRM communicates with:
+
+```text
+Electron
+↓
+Local NestJS
+↓
+MySQL
+```
+
+Only licensing requires the remote server.
+
+Implement the existing offline grace-period design safely.
+
+The desktop application should periodically validate the license when Internet is available.
+
+Do not make the application contact the license server for every POS transaction.
+
+---
+
+# PART 14 — LICENSE DASHBOARD ANALYTICS
+
+Create a dashboard homepage showing useful metrics.
+
+Examples:
+
+```text
+Total Products
+Total Customers
+Total Licenses
+Active Licenses
+Expired Licenses
+Revoked Licenses
+Devices Activated
+Activations Today
+Activations This Month
+```
+
+Charts:
+
+* licenses generated over time
+* activations over time
+* active vs expired licenses
+* licenses by product
+* licenses by customer
+
+Do NOT show branch revenue because the license dashboard manages products/licenses, not CRM branches.
+
+---
+
+# PART 15 — PRODUCT MANAGEMENT IN LICENSE DASHBOARD
+
+The dashboard should allow me to manage the products for which I sell licenses.
+
+For each product:
+
+* name
+* description
+* version
+* status
+* license count
+* active license count
+* expiration statistics
+
+Example:
+
+```text
+Retail CRM Desktop
+
+Total Licenses: 42
+Active: 35
+Expired: 5
+Revoked: 2
+Devices: 35
+```
+
+Later I can add other products without rewriting the license system.
+
+---
+
+# PART 16 — ADMIN AUTHENTICATION
+
+The license dashboard itself must be protected.
+
+Create:
+
+* admin login
+* secure password hashing
+* JWT/session authentication
+* protected admin routes
+* logout
+* rate limiting
+* input validation
+* secure cookies/token handling as appropriate
+* audit logging
+
+Only authorized administrators can generate/revoke licenses.
+
+Never expose license management endpoints publicly without authentication.
+
+---
+
+# PART 17 — AUDIT LOG
+
+Create an audit log for important administrative actions.
+
+Examples:
+
+```text
+License generated
+License revoked
+License reactivated
+Device deactivated
+Expiration extended
+Device limit changed
+Customer created
+Product created
+Admin login
+Admin logout
+```
+
+Display:
+
+* action
+* administrator
+* timestamp
+* target
+* relevant metadata
+
+---
+
+# PART 18 — SECURITY REQUIREMENTS
+
+Treat this as a real commercial licensing system.
+
+Implement strong security practices:
+
+* HTTPS in production
+* rate limiting
+* input validation
+* SQL injection protection through Prisma
+* secure password hashing
+* protected admin endpoints
+* secure secrets through environment variables
+* no database credentials in frontend
+* no private signing keys in desktop app
+* no secrets committed to Git
+* CORS configured correctly
+* Helmet/security headers
+* audit logging
+* device ID hashing
+* replay protection where appropriate
+* license activation rate limiting
+* careful error messages that don't leak internal information
+
+Do NOT promise that the `.exe` is "uncrackable".
+
+Instead, design the system so that copying the installer alone is not enough to obtain a working licensed installation.
+
+The server-side license authority, device binding, signed responses, and protected secrets should be the security foundation.
+
+---
+
+# PART 19 — DESKTOP CRM INTEGRATION
+
+Connect the existing desktop CRM's Phase 7 license system to this new License Dashboard API.
+
+The desktop application must use:
+
+```env
+LICENSE_API_URL="PASTE_PUBLIC_LICENSE_API_URL_HERE"
+```
+
+The desktop application should NOT connect directly to Neon.
+
+The architecture must be:
+
+```text
+                    YOUR SERVER
+             ┌─────────────────────┐
+             │   License Backend   │
+             │       NestJS        │
+             └──────────┬──────────┘
+                        │
+                        ▼
+                  Neon PostgreSQL
+                  License Database
+
+
+CUSTOMER COMPUTER
+
+┌───────────────────────────────────────┐
+│             Retail CRM.exe            │
+│                                       │
+│ Electron                              │
+│   │                                   │
+│   ├── Frontend                        │
+│   │                                   │
+│   └── Local NestJS API                │
+│             │                         │
+│             ▼                         │
+│          MySQL                       │
+│                                       │
+│ License activation ───── HTTPS ───────┼──→ License API
+└───────────────────────────────────────┘
+```
+
+---
+
+# PART 20 — BEFORE FINAL EXE: STOP AND LET ME TEST
+
+This is extremely important.
+
+DO NOT immediately build the final `.exe`.
+
+First:
+
+1. Build the license dashboard.
+2. Build the license API.
+3. Connect the desktop app to the license API.
+4. Make sure license activation works.
+5. Make sure device limits work.
+6. Make sure revocation works.
+7. Make sure device deactivation works.
+8. Make sure offline operation works.
+9. Make sure MySQL works.
+10. Make sure product images work from MySQL.
+11. Make sure POS works.
+12. Make sure sales work.
+13. Make sure dashboard works.
+14. Make sure authentication works.
+15. Make sure there are no remaining branch features.
+16. Make sure there are no TypeScript/build errors.
+
+Then create a development run system.
+
+Create:
+
+`retail-crm-desktop\RUN-DESKTOP.bat`
+
+and, if necessary:
+
+`retail-crm-license-dashboard\RUN-DASHBOARD.bat`
+
+I want to be able to manually run and inspect everything.
+
+---
+
+# PART 21 — CREATE A TESTING CHECKLIST
+
+Create:
+
+`FINAL-PRE-EXE-CHECKLIST.md`
+
+Include tests for:
+
+### Desktop
+
+* [ ] First-run wizard opens
+* [ ] License activation works
+* [ ] Invalid license is rejected
+* [ ] Expired license is rejected
+* [ ] Revoked license is rejected
+* [ ] Device limit works
+* [ ] Device deactivation works
+* [ ] Offline mode works
+* [ ] Admin creation works
+* [ ] MySQL connection works
+* [ ] Products work
+* [ ] Product images work
+* [ ] POS works
+* [ ] Sales work
+* [ ] Inventory works
+* [ ] Customers work
+* [ ] Suppliers work
+* [ ] Expenses work
+* [ ] Dashboard works
+* [ ] Reports work
+* [ ] No branch functionality remains
+
+### License Dashboard
+
+* [ ] Admin login
+* [ ] Product creation
+* [ ] Customer creation
+* [ ] License generation
+* [ ] License search
+* [ ] License filtering
+* [ ] License details
+* [ ] Device list
+* [ ] Activation history
+* [ ] Device deactivation
+* [ ] License revocation
+* [ ] License reactivation
+* [ ] Expiration changes
+* [ ] Device-limit changes
+* [ ] Audit log
+* [ ] Analytics
+
+---
+
+# PART 22 — DO NOT BUILD THE FINAL INSTALLER YET
+
+After all of the above is implemented:
+
+STOP.
+
+Do not create the production `.exe` yet.
+
+Do not sign the installer yet.
+
+Do not package the final production build yet.
+
+Instead, give me a report containing:
+
+1. What was implemented.
+2. What files were created.
+3. What files were modified.
+4. Database schema.
+5. Environment variables I need to fill.
+6. License API URL I need to configure.
+7. Commands to run the license dashboard.
+8. Commands to run the desktop CRM.
+9. Which ports are being used.
+10. Any remaining errors.
+11. Any security concerns.
+12. Any manual tests I need to perform.
+13. Exact steps to generate my first test license.
+14. Exact steps to activate that license on the desktop CRM.
+15. Exact steps to revoke/deactivate it from the dashboard.
+
+Then wait for my approval.
+
+Only after I manually inspect everything and confirm that it works should we proceed to the FINAL ELECTRON WINDOWS `.exe` packaging phase.
+
+---
+
+# IMPORTANT CREDENTIAL PLACEHOLDERS
+
+Create clear `.env.example` files with placeholders.
+
+I will provide the actual values later.
+
+For the NEW LICENSE DASHBOARD:
+
+```env
+DATABASE_URL="PASTE_NEW_NEON_LICENSE_DATABASE_URL_HERE"
+JWT_SECRET="PASTE_NEW_RANDOM_LICENSE_DASHBOARD_JWT_SECRET_HERE"
+PORT=4000
+NODE_ENV=development
+LICENSE_API_URL="PASTE_PUBLIC_LICENSE_API_URL_HERE"
+```
+
+For the DESKTOP CRM:
+
+```env
+LICENSE_API_URL="PASTE_PUBLIC_LICENSE_API_URL_HERE"
+```
+
+Do NOT copy the old Neon database credentials from the online CRM.
+
+Do NOT expose any database credentials in frontend code.
+
+Do NOT commit `.env` files.
+
+---
+
+# FINAL GOAL
+
+The final architecture should be:
+
+```text
+                    ┌──────────────────────────────┐
+                    │     LICENSE DASHBOARD        │
+                    │                              │
+                    │ Products                     │
+                    │ Customers                    │
+                    │ Licenses                     │
+                    │ Devices                      │
+                    │ Activations                  │
+                    │ Analytics                    │
+                    │ Audit Logs                   │
+                    └──────────────┬───────────────┘
+                                   │
+                                   ▼
+                         License API / NestJS
+                                   │
+                                   ▼
+                             Neon Database
+
+
+                     CUSTOMER WINDOWS PC
+
+                    ┌──────────────────────┐
+                    │    Retail CRM.exe     │
+                    │                      │
+                    │ Electron             │
+                    │   ↓                  │
+                    │ Frontend             │
+                    │   ↓                  │
+                    │ Local NestJS API     │
+                    │   ↓                  │
+                    │ Local MySQL          │
+                    │                      │
+                    │ POS                  │
+                    │ Products             │
+                    │ Inventory            │
+                    │ Customers            │
+                    │ Suppliers            │
+                    │ Expenses             │
+                    │ Reports              │
+                    └──────────┬───────────┘
+                               │
+                         HTTPS only for
+                       license activation/
+                          validation
+                               │
+                               ▼
+                         License API
+```
+
+The customer should be able to use the CRM normally without Internet after activation.
+
+The license server should control whether a new device can activate and whether a license is active/revoked/expired.
+
+The license dashboard should give me complete visibility and control over the licenses I sell.
+
+MOST IMPORTANT:
+
+Do not rush into the final `.exe`.
+
+First make the entire development system easy to run with the `.bat` files, let me inspect the desktop CRM and license dashboard manually, fix anything I find, and only then proceed to final Windows installer packaging.

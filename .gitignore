@@ -1,0 +1,70 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Testing
+coverage/
+*.log
+
+# Production builds
+dist/
+build/
+out/
+.next/
+
+# Environment variables
+.env
+.env.local
+.env.production.local
+.env.development.local
+.env.test.local
+
+# Desktop app output
+desktop-app/dist/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+pnpm-debug.log*
+
+# Prisma
+backend/prisma/migrations/*_init/
+!backend/prisma/migrations/.gitkeep
+
+# Uploads
+backend/uploads/
+backend/blob_storage/
+
+# User data (encrypted config, user uploads)
+*.enc
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+
+# MySQL dumps
+*.sql.gz
+*.sql
+
+# Package manager locks (optional - uncomment if you want to ignore them)
+# package-lock.json
+# yarn.lock
+# pnpm-lock.yaml

@@ -1,0 +1,78 @@
+{
+  "name": "retail-crm-desktop",
+  "version": "1.0.0",
+  "description": "Retail CRM Desktop Application",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder",
+    "dist:win": "electron-builder --win --x64"
+  },
+  "keywords": ["retail", "crm", "desktop"],
+  "author": "Your Company",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.9.1"
+  },
+  "dependencies": {
+    "bcrypt": "^5.1.1",
+    "mysql2": "^3.11.5"
+  },
+  "build": {
+    "appId": "com.yourcompany.retailcrm",
+    "productName": "Retail CRM",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "setup.html",
+      "post-install.js",
+      "package.json",
+      "node_modules/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "../backend",
+        "to": "backend",
+        "filter": [
+          "**/*",
+          "!node_modules"
+        ]
+      },
+      {
+        "from": "../frontend",
+        "to": "frontend",
+        "filter": [
+          "**/*",
+          "!node_modules",
+          "!.next/cache"
+        ]
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Retail CRM",
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "installerHeaderIcon": "build/icon.ico",
+      "deleteAppDataOnUninstall": false,
+      "runAfterFinish": true
+    },
+    "afterPack": "./post-install.js"
+  }
+}

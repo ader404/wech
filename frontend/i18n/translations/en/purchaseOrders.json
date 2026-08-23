@@ -1,0 +1,8 @@
+{
+  "status": {
+    "PENDING": "Pending",
+    "PARTIAL": "Partial",
+    "RECEIVED": "Received",
+    "CANCELLED": "Cancelled"
+  }
+}

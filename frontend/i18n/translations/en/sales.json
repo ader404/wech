@@ -1,0 +1,56 @@
+{
+  "title": "Sales",
+  "searchPlaceholder": "Search invoice or customer...",
+  "records": "{count} records",
+  "table": {
+    "invoice": "Invoice",
+    "customer": "Customer",
+    "branch": "Branch",
+    "cashier": "Cashier",
+    "method": "Method",
+    "total": "Total",
+    "status": "Status",
+    "date": "Date",
+    "loading": "Loading..."
+  },
+  "walkIn": "Walk-in",
+  "noSalesYet": "No sales yet",
+  "paymentMethods": {
+    "CASH": "Cash",
+    "CARD": "Card",
+    "BANK_TRANSFER": "Bank Transfer",
+    "QR": "QR"
+  },
+  "statuses": {
+    "COMPLETED": "Completed",
+    "REFUNDED": "Refunded",
+    "PARTIALLY_REFUNDED": "Partially Refunded",
+    "ON_HOLD": "On Hold"
+  },
+  "detail": {
+    "customer": "Customer",
+    "branch": "Branch",
+    "cashier": "Cashier",
+    "payment": "Payment",
+    "date": "Date",
+    "status": "Status",
+    "product": "Product",
+    "qty": "Qty",
+    "price": "Price",
+    "total": "Total",
+    "subtotal": "Subtotal",
+    "discount": "Discount",
+    "tax": "Tax",
+    "receipt": "Receipt",
+    "refund": "Refund",
+    "processing": "Processing..."
+  },
+  "toast": {
+    "refundSuccess": "Sale refunded",
+    "refundFailed": "Refund failed",
+    "deleteSuccess": "Sale deleted successfully",
+    "deleteFailed": "Failed to delete sale",
+    "restoreSuccess": "Sale restored successfully",
+    "restoreFailed": "Failed to restore sale"
+  }
+}

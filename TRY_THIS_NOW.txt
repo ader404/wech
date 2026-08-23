@@ -1,0 +1,35 @@
+## 🎯 FINAL INSTRUCTIONS
+
+### The backend is running but rejecting all logins with 401.
+
+### What to do NOW:
+
+1. **Close ALL terminal windows** (Backend, Frontend, License API, Desktop App)
+
+2. **Double-click:** `RUN-DESKTOP.bat`
+
+3. **Wait 20 seconds** for everything to start
+
+4. **Login with:**
+   ```
+   Email: working@test.com
+   Password: password
+   ```
+
+5. **If it still fails:**
+   - Press Ctrl+Shift+I in the Electron window
+   - Look at Console tab for errors
+   - Check Network tab for the /api/auth/login request
+   - Take a screenshot and show me
+
+### Alternative - Test in Browser:
+Instead of desktop app, try in browser first:
+1. Open: http://localhost:3000
+2. Wait for it to load
+3. Try login there
+
+This will help us see if it's a frontend or backend issue.
+
+---
+
+**The backend IS working**, all routes load correctly. Something is wrong with the password validation logic or there's rate limiting blocking you.
