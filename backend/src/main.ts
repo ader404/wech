@@ -23,9 +23,20 @@ async function bootstrap() {
     }),
   )
 
-  // CORS - allow all origins for desktop app (both frontend and backend run locally)
+  const frontendOrigin = process.env.FRONTEND_ORIGIN || 'http://127.0.0.1:3000'
+  const allowedOrigins = new Set([
+    frontendOrigin,
+    frontendOrigin.replace('127.0.0.1', 'localhost'),
+  ])
+
   app.enableCors({
-    origin: true,
+    origin(origin, callback) {
+      if (!origin || allowedOrigins.has(origin)) {
+        callback(null, true)
+        return
+      }
+      callback(new Error(`CORS rejected origin: ${origin}`), false)
+    },
     credentials: true,
   })
 
@@ -41,15 +52,17 @@ async function bootstrap() {
 
   app.setGlobalPrefix('api')
 
-  const config = new DocumentBuilder()
-    .setTitle('Retail CRM API')
-    .setDescription('Multi-branch CRM + POS + Inventory API')
-    .setVersion('1.0')
-    .addBearerAuth()
-    .build()
+  if (process.env.ENABLE_SWAGGER !== 'false') {
+    const config = new DocumentBuilder()
+      .setTitle('Retail CRM API')
+      .setDescription('Single-shop CRM + POS + Inventory API')
+      .setVersion('1.0')
+      .addBearerAuth()
+      .build()
 
-  const document = SwaggerModule.createDocument(app, config)
-  SwaggerModule.setup('api/docs', app, document)
+    const document = SwaggerModule.createDocument(app, config)
+    SwaggerModule.setup('api/docs', app, document)
+  }
 
   const port = process.env.PORT || 3001
   // Bind explicitly to localhost only. This is a desktop app's local backend —

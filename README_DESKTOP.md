@@ -36,7 +36,6 @@ retail-crm-desktop/
 │   ├── main.js                 ← Updated with packaging support
 │   ├── preload.js              ← NEW: Security bridge
 │   ├── setup.html              ← Existing setup wizard
-│   ├── post-install.js         ← NEW: Post-build script
 │   ├── build-installer.bat     ← Alternative build script
 │   └── USER_GUIDE.md           ← For end users
 │
@@ -89,7 +88,7 @@ Size: ~200-400 MB (includes everything needed)
 
 ### First Run - Setup Wizard
 1. **Database Config Page**
-   - Host: localhost
+   - Host: 127.0.0.1
    - Port: 3306
    - Database: retail_crm
    - Username: root

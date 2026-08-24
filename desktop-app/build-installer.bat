@@ -25,6 +25,13 @@ if %errorlevel% neq 0 (
 echo.
 
 echo Step 3: Building backend...
+call npx prisma generate
+if %errorlevel% neq 0 (
+    echo Failed to generate the Prisma client
+    pause
+    exit /b 1
+)
+
 call npm run build
 if %errorlevel% neq 0 (
     echo Failed to build backend

@@ -1,16 +1,17 @@
 {
-  "name": "retail-crm-desktop",
+  "name": "aderuix-pos",
   "version": "1.0.0",
-  "description": "Retail CRM Desktop Application",
+  "description": "ADERUIX Retail CRM & POS System",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
     "pack": "electron-builder --dir",
     "dist": "electron-builder",
-    "dist:win": "electron-builder --win --x64"
+    "dist:win": "electron-builder --win --x64",
+    "dist:linux": "electron-builder --linux AppImage --x64"
   },
-  "keywords": ["retail", "crm", "desktop"],
-  "author": "Your Company",
+  "keywords": ["retail", "crm", "desktop", "pos", "aderuix"],
+  "author": "ADERUIX",
   "license": "MIT",
   "devDependencies": {
     "electron": "^28.0.0",
@@ -21,8 +22,8 @@
     "mysql2": "^3.11.5"
   },
   "build": {
-    "appId": "com.yourcompany.retailcrm",
-    "productName": "Retail CRM",
+    "appId": "com.aderuix.pos",
+    "productName": "ADERUIX POS",
     "directories": {
       "output": "dist"
     },
@@ -30,27 +31,38 @@
       "main.js",
       "preload.js",
       "setup.html",
-      "post-install.js",
-      "package.json",
-      "node_modules/**/*"
+      "package.json"
     ],
     "extraResources": [
       {
-        "from": "../backend",
+        "from": "../backend/dist",
         "to": "backend",
-        "filter": [
-          "**/*",
-          "!node_modules"
-        ]
+        "filter": ["**/*"]
       },
       {
-        "from": "../frontend",
+        "from": "../backend/node_modules",
+        "to": "backend/node_modules",
+        "filter": ["**/*"]
+      },
+      {
+        "from": "../backend/prisma",
+        "to": "backend/prisma",
+        "filter": ["**/*"]
+      },
+      {
+        "from": "../frontend/.next/standalone",
         "to": "frontend",
-        "filter": [
-          "**/*",
-          "!node_modules",
-          "!.next/cache"
-        ]
+        "filter": ["**/*"]
+      },
+      {
+        "from": "../frontend/.next/static",
+        "to": "frontend/.next/static",
+        "filter": ["**/*"]
+      },
+      {
+        "from": "../frontend/public",
+        "to": "frontend/public",
+        "filter": ["**/*"]
       }
     ],
     "win": {
@@ -61,18 +73,23 @@
         }
       ]
     },
+    "linux": {
+      "category": "Office",
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": ["x64"]
+        }
+      ]
+    },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "Retail CRM",
-      "installerIcon": "build/icon.ico",
-      "uninstallerIcon": "build/icon.ico",
-      "installerHeaderIcon": "build/icon.ico",
       "deleteAppDataOnUninstall": false,
       "runAfterFinish": true
-    },
-    "afterPack": "./post-install.js"
+    }
   }
 }

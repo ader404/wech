@@ -2,22 +2,161 @@ const electron = require('electron')
 const app = electron.app
 const BrowserWindow = electron.BrowserWindow
 const ipcMain = electron.ipcMain
+const Menu = electron.Menu
 const safeStorage = electron.safeStorage
 const path = require('path')
 const fs = require('fs')
 const { spawn } = require('child_process')
 const crypto = require('crypto')
+const net = require('net')
+const http = require('http')
+const { dialog } = require('electron')
+
+// AppImage cannot guarantee a setuid chrome-sandbox binary, and some Linux
+// hosts disable unprivileged user namespaces entirely. Apply this before
+// Electron creates its zygote; renderer context isolation remains enabled.
+if (process.platform === 'linux' && app.isPackaged) {
+  app.commandLine.appendSwitch('no-sandbox')
+}
 
 let mainWindow = null
 let backendProcess = null
 let frontendProcess = null
 let configPath = null
+let backendPort = 3001
+let frontendPort = 3000
+
+function databaseUrl(db) {
+  const username = encodeURIComponent(db.username)
+  const password = encodeURIComponent(db.password)
+  const hostValue = databaseHost(db.host)
+  const host = hostValue.includes(':') ? `[${hostValue}]` : hostValue
+  return `mysql://${username}:${password}@${host}:${db.port}/${encodeURIComponent(db.database)}`
+}
+
+function databaseHost(host) {
+  const value = String(host || '').trim()
+  // MySQL installations commonly bind only IPv4. Avoid localhost resolving
+  // to ::1 on Linux while still allowing users to enter a specific host.
+  return value.toLowerCase() === 'localhost' || value === '::1'
+    ? '127.0.0.1'
+    : value
+}
+
+function bundledNodeEnv(extra = {}) {
+  const env = {
+    ...process.env,
+    ...extra,
+  }
+
+  // Electron's executable can run ordinary Node entry points without relying
+  // on npm or a system-wide Node installation on the target computer.
+  if (app.isPackaged) env.ELECTRON_RUN_AS_NODE = '1'
+  return env
+}
+
+function embeddedNodeArgs(entryPoint) {
+  // These are trusted utility processes, not renderers. Do not pass Chromium
+  // switches here: ELECTRON_RUN_AS_NODE treats them as invalid Node options.
+  return [entryPoint]
+}
 
 function getConfigPath() {
   if (!configPath) {
     configPath = path.join(app.getPath('userData'), 'config.enc')
   }
   return configPath
+}
+
+function getLogPath() {
+  const logDir = path.join(app.getPath('userData'), 'logs')
+  fs.mkdirSync(logDir, { recursive: true })
+  return path.join(logDir, 'desktop.log')
+}
+
+function log(message) {
+  const line = `[${new Date().toISOString()}] ${message}`
+  console.log(line)
+  try {
+    fs.appendFileSync(getLogPath(), `${line}\n`)
+  } catch (err) {
+    console.error('Failed to write desktop log:', err)
+  }
+}
+
+function pipeProcessLogs(name, proc) {
+  proc.stdout.on('data', d => log(`${name}: ${d.toString().trimEnd()}`))
+  proc.stderr.on('data', d => log(`${name}: ${d.toString().trimEnd()}`))
+  proc.on('error', err => log(`${name} process error: ${err.stack || err.message}`))
+  proc.on('exit', (code, signal) => {
+    if (code !== 0) log(`${name} exited unexpectedly (code ${code}, signal ${signal || 'none'})`)
+  })
+}
+
+function isPortAvailable(port, host = '127.0.0.1') {
+  return new Promise(resolve => {
+    const server = net.createServer()
+    server.once('error', () => resolve(false))
+    server.once('listening', () => {
+      server.close(() => resolve(true))
+    })
+    server.listen(port, host)
+  })
+}
+
+async function findAvailablePort(preferredPort) {
+  for (let port = preferredPort; port < preferredPort + 20; port += 1) {
+    if (await isPortAvailable(port)) return port
+  }
+  throw new Error(`No available local port found from ${preferredPort} to ${preferredPort + 19}`)
+}
+
+function waitForTcp(port, label, timeoutMs = 30000) {
+  const started = Date.now()
+
+  return new Promise((resolve, reject) => {
+    const attempt = () => {
+      const socket = net.createConnection({ host: '127.0.0.1', port })
+      socket.once('connect', () => {
+        socket.destroy()
+        resolve()
+      })
+      socket.once('error', () => {
+        socket.destroy()
+        if (Date.now() - started > timeoutMs) {
+          reject(new Error(`${label} did not become reachable on port ${port}. See ${getLogPath()}`))
+        } else {
+          setTimeout(attempt, 500)
+        }
+      })
+    }
+
+    attempt()
+  })
+}
+
+function waitForHttp(url, label, timeoutMs = 45000) {
+  const started = Date.now()
+
+  return new Promise((resolve, reject) => {
+    const attempt = () => {
+      const req = http.get(url, res => {
+        res.resume()
+        resolve()
+      })
+
+      req.once('error', () => {
+        if (Date.now() - started > timeoutMs) {
+          reject(new Error(`${label} did not become reachable at ${url}. See ${getLogPath()}`))
+        } else {
+          setTimeout(attempt, 500)
+        }
+      })
+      req.setTimeout(5000, () => req.destroy())
+    }
+
+    attempt()
+  })
 }
 
 function saveConfig(data) {
@@ -47,68 +186,207 @@ function createSetupWindow() {
     },
     autoHideMenuBar: true,
   })
-  mainWindow.loadFile('setup.html')
+  mainWindow.loadFile(path.join(__dirname, 'setup.html'))
 }
 
 function createMainWindow() {
   mainWindow = new BrowserWindow({
     width: 1400,
     height: 900,
-    webPreferences: { nodeIntegration: false },
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+      // AppImage builds cannot reliably provide Chromium's setuid sandbox on
+      // all Linux hosts. Keep it enabled on Windows; Linux still retains
+      // context isolation and disabled Node integration.
+      sandbox: process.platform !== 'linux',
+    },
     autoHideMenuBar: true,
   })
-  mainWindow.loadURL('http://localhost:3000')
+  const apiUrl = encodeURIComponent(`http://127.0.0.1:${backendPort}/api`)
+  mainWindow.loadURL(`http://127.0.0.1:${frontendPort}/?apiUrl=${apiUrl}`)
 }
 
-function startBackend(db, jwt) {
-  const dbUrl = `mysql://${db.username}:${db.password}@${db.host}:${db.port}/${db.database}`
+async function startBackend(db, jwt) {
+  const dbUrl = databaseUrl(db)
+  backendPort = await findAvailablePort(Number(db.backendPort) || 3001)
 
   // Determine backend path based on whether we're packaged or in development
   const backendPath = app.isPackaged
     ? path.join(process.resourcesPath, 'backend')
     : path.join(__dirname, '../backend')
 
-  // Use 'start:dev' in development, 'start' in production
-  const startScript = app.isPackaged ? 'start' : 'start:dev'
+  const command = app.isPackaged ? process.execPath : 'npm'
+  const args = app.isPackaged
+    ? embeddedNodeArgs(path.join(backendPath, 'src', 'main.js'))
+    : ['run', 'start:dev']
 
-  backendProcess = spawn('npm', ['run', startScript], {
+  backendProcess = spawn(command, args, {
     cwd: backendPath,
-    shell: true,
-    env: {
-      ...process.env,
+    shell: false,
+    env: bundledNodeEnv({
       DATABASE_URL: dbUrl,
       JWT_SECRET: jwt,
-      PORT: '3001',
-    }
+      NODE_ENV: app.isPackaged ? 'production' : process.env.NODE_ENV || 'development',
+      PORT: String(backendPort),
+      HOST: '127.0.0.1',
+      FRONTEND_ORIGIN: `http://127.0.0.1:${frontendPort}`,
+      ENABLE_SWAGGER: app.isPackaged ? 'false' : process.env.ENABLE_SWAGGER || 'true',
+    }),
   })
 
-  backendProcess.stdout.on('data', d => console.log('Backend:', d.toString()))
-  backendProcess.stderr.on('data', d => console.log('Backend:', d.toString()))
+  pipeProcessLogs('Backend', backendProcess)
+  return backendPort
 }
 
-function startFrontend() {
+async function startFrontend() {
+  frontendPort = await findAvailablePort(Number(process.env.FRONTEND_PORT) || 3000)
+
   // Determine frontend path based on whether we're packaged or in development
   const frontendPath = app.isPackaged
     ? path.join(process.resourcesPath, 'frontend')
     : path.join(__dirname, '../frontend')
 
-  // Use 'dev' in development, 'start' in production
-  const startScript = app.isPackaged ? 'start' : 'dev'
+  const command = app.isPackaged ? process.execPath : 'npm'
+  const args = app.isPackaged
+    ? embeddedNodeArgs(path.join(frontendPath, 'server.js'))
+    : ['run', 'dev']
 
-  frontendProcess = spawn('npm', ['run', startScript], {
+  frontendProcess = spawn(command, args, {
     cwd: frontendPath,
-    shell: true,
-    env: {
-      ...process.env,
-      NEXT_PUBLIC_API_URL: 'http://localhost:3001/api'
-    }
+    shell: false,
+    env: bundledNodeEnv({
+      NEXT_PUBLIC_API_URL: `http://127.0.0.1:${backendPort}/api`,
+      PORT: String(frontendPort),
+      HOSTNAME: '127.0.0.1',
+    }),
   })
 
-  frontendProcess.stdout.on('data', d => console.log('Frontend:', d.toString()))
-  frontendProcess.stderr.on('data', d => console.log('Frontend:', d.toString()))
+  pipeProcessLogs('Frontend', frontendProcess)
+  return frontendPort
+}
+
+async function startApplication(cfg) {
+  frontendPort = await findAvailablePort(Number(cfg.frontendPort) || 3000)
+  await startBackend(cfg.database, cfg.jwtSecret)
+  await startFrontend()
+  await waitForTcp(backendPort, 'Backend API')
+  await waitForHttp(`http://127.0.0.1:${frontendPort}`, 'Frontend')
+  createMainWindow()
 }
 
 app.on('ready', async () => {
+  // Create Application Menu
+  const template = [
+    {
+      label: 'File',
+      submenu: [
+        {
+          label: 'Backup Database...',
+          click: async () => {
+            const { dialog } = require('electron')
+            const cfg = loadConfig()
+            if (!cfg) return dialog.showErrorBox('Error', 'No configuration found.')
+            
+            const result = await dialog.showSaveDialog(mainWindow, {
+              title: 'Save Database Backup',
+              defaultPath: `retail_crm_backup_${new Date().toISOString().slice(0, 10)}.sql`,
+              filters: [{ name: 'SQL Files', extensions: ['sql'] }]
+            })
+      
+            if (result.canceled || !result.filePath) return
+      
+            const util = require('util')
+            const exec = util.promisify(require('child_process').exec)
+            const db = cfg.database
+            const dumpCmd = `mysqldump -h ${databaseHost(db.host)} -P ${db.port} -u ${db.username} ${db.password ? `-p"${db.password}"` : ''} ${db.database} > "${result.filePath}"`
+            
+            try {
+              await exec(dumpCmd)
+              dialog.showMessageBox(mainWindow, { type: 'info', title: 'Backup Successful', message: 'Database backed up successfully.' })
+            } catch (err) {
+              dialog.showErrorBox('Backup Failed', err.message)
+            }
+          }
+        },
+        {
+          label: 'Restore Database...',
+          click: async () => {
+            const { dialog } = require('electron')
+            const cfg = loadConfig()
+            if (!cfg) return dialog.showErrorBox('Error', 'No configuration found.')
+      
+            const result = await dialog.showOpenDialog(mainWindow, {
+              title: 'Select Database Backup to Restore',
+              filters: [{ name: 'SQL Files', extensions: ['sql'] }],
+              properties: ['openFile']
+            })
+      
+            if (result.canceled || !result.filePaths.length) return
+      
+            const util = require('util')
+            const exec = util.promisify(require('child_process').exec)
+            const db = cfg.database
+            const restoreCmd = `mysql -h ${databaseHost(db.host)} -P ${db.port} -u ${db.username} ${db.password ? `-p"${db.password}"` : ''} ${db.database} < "${result.filePaths[0]}"`
+            
+            try {
+              await exec(restoreCmd)
+              dialog.showMessageBox(mainWindow, { type: 'info', title: 'Restore Successful', message: 'Database restored successfully.' })
+            } catch (err) {
+              dialog.showErrorBox('Restore Failed', err.message)
+            }
+          }
+        },
+        { type: 'separator' },
+        {
+          label: 'Exit',
+          click: () => app.quit()
+        }
+      ]
+    },
+    {
+      label: 'View',
+      submenu: [
+        { role: 'reload' },
+        { role: 'toggleDevTools' },
+        { type: 'separator' },
+        { role: 'resetZoom' },
+        { role: 'zoomIn' },
+        { role: 'zoomOut' },
+        { type: 'separator' },
+        { role: 'togglefullscreen' }
+      ]
+    },
+    {
+      label: 'Settings',
+      submenu: [
+        {
+          label: 'Reset Configuration (Requires Restart)',
+          click: async () => {
+            const { dialog } = require('electron')
+            const response = await dialog.showMessageBox(mainWindow, {
+              type: 'warning',
+              buttons: ['Cancel', 'Reset Configuration'],
+              title: 'Confirm Reset',
+              message: 'Are you sure you want to reset the configuration? The app will restart and prompt for setup again. Your database data will NOT be deleted.'
+            })
+            if (response.response === 1) {
+              try {
+                if (configExists()) fs.unlinkSync(getConfigPath())
+                app.relaunch()
+                app.exit(0)
+              } catch (err) {
+                dialog.showErrorBox('Reset Failed', err.message)
+              }
+            }
+          }
+        }
+      ]
+    }
+  ]
+  const menu = Menu.buildFromTemplate(template)
+  Menu.setApplicationMenu(menu)
+
   // Register IPC handlers
   ipcMain.handle('database:test', async (_e, cfg) => {
     try {
@@ -116,19 +394,22 @@ app.on('ready', async () => {
 
       // First connect without database to create it if needed
       const conn = await mysql.createConnection({
-        host: cfg.host,
+        host: databaseHost(cfg.host),
         port: cfg.port,
         user: cfg.username,
         password: cfg.password,
       })
 
       // Create database if it doesn't exist
-      await conn.query(`CREATE DATABASE IF NOT EXISTS \`${cfg.database}\``)
+      // Database names cannot be parameterized; quote embedded backticks so a
+      // value supplied by the setup window cannot alter this statement.
+      const escapedDatabaseName = String(cfg.database).replace(/`/g, '``')
+      await conn.query(`CREATE DATABASE IF NOT EXISTS \`${escapedDatabaseName}\``)
       await conn.end()
 
       // Now test connection to the specific database
       const dbConn = await mysql.createConnection({
-        host: cfg.host,
+        host: databaseHost(cfg.host),
         port: cfg.port,
         user: cfg.username,
         password: cfg.password,
@@ -138,12 +419,18 @@ app.on('ready', async () => {
 
       return { success: true }
     } catch (err) {
+      if (err.code === 'ECONNREFUSED') {
+        return {
+          success: false,
+          error: `MySQL is not running or is unreachable at ${databaseHost(cfg.host)}:${cfg.port}. Start MySQL and try again.`,
+        }
+      }
       return { success: false, error: err.message }
     }
   })
 
   ipcMain.handle('database:migrate', async (_e, cfg) => {
-    const dbUrl = `mysql://${cfg.username}:${cfg.password}@${cfg.host}:${cfg.port}/${cfg.database}`
+    const dbUrl = databaseUrl(cfg)
 
     const backendPath = app.isPackaged
       ? path.join(process.resourcesPath, 'backend')
@@ -153,21 +440,24 @@ app.on('ready', async () => {
       let output = ''
       let errorOutput = ''
 
-      // Use 'db push' instead of 'migrate deploy' - it applies schema directly without migration files
-      const proc = spawn('npx', ['prisma', 'db', 'push', '--accept-data-loss', '--skip-generate'], {
+      const command = app.isPackaged ? process.execPath : 'npx'
+      const args = app.isPackaged
+        ? embeddedNodeArgs(path.join(backendPath, 'node_modules', 'prisma', 'build', 'index.js')).concat(['migrate', 'deploy'])
+        : ['prisma', 'migrate', 'deploy']
+      const proc = spawn(command, args, {
         cwd: backendPath,
-        shell: true,
-        env: { ...process.env, DATABASE_URL: dbUrl }
+        shell: false,
+        env: bundledNodeEnv({ DATABASE_URL: dbUrl })
       })
 
       proc.stdout.on('data', (data) => {
         output += data.toString()
-        console.log('Migration:', data.toString())
+        log(`Migration: ${data.toString().trimEnd()}`)
       })
 
       proc.stderr.on('data', (data) => {
         errorOutput += data.toString()
-        console.error('Migration Error:', data.toString())
+        log(`Migration Error: ${data.toString().trimEnd()}`)
       })
 
       proc.on('close', code => {
@@ -194,7 +484,7 @@ app.on('ready', async () => {
       const dbConfig = data.dbConfig
 
       const conn = await mysql.createConnection({
-        host: dbConfig.host,
+        host: databaseHost(dbConfig.host),
         port: dbConfig.port,
         user: dbConfig.username,
         password: dbConfig.password,
@@ -216,6 +506,77 @@ app.on('ready', async () => {
     }
   })
 
+  ipcMain.handle('database:backup', async () => {
+    try {
+      const cfg = loadConfig()
+      if (!cfg || !cfg.database) throw new Error('No database configuration found')
+
+      const { dialog } = require('electron')
+      const result = await dialog.showSaveDialog(mainWindow, {
+        title: 'Save Database Backup',
+        defaultPath: `retail_crm_backup_${new Date().toISOString().slice(0, 10)}.sql`,
+        filters: [{ name: 'SQL Files', extensions: ['sql'] }]
+      })
+
+      if (result.canceled || !result.filePath) return { success: false, canceled: true }
+
+      const util = require('util')
+      const exec = util.promisify(require('child_process').exec)
+      
+      const db = cfg.database
+      const dumpCmd = `mysqldump -h ${databaseHost(db.host)} -P ${db.port} -u ${db.username} ${db.password ? `-p"${db.password}"` : ''} ${db.database} > "${result.filePath}"`
+      
+      await exec(dumpCmd)
+      return { success: true, filePath: result.filePath }
+    } catch (err) {
+      log(`Backup failed: ${err.stack || err.message}`)
+      return { success: false, error: err.message }
+    }
+  })
+
+  ipcMain.handle('database:restore', async () => {
+    try {
+      const cfg = loadConfig()
+      if (!cfg || !cfg.database) throw new Error('No database configuration found')
+
+      const { dialog } = require('electron')
+      const result = await dialog.showOpenDialog(mainWindow, {
+        title: 'Select Database Backup to Restore',
+        filters: [{ name: 'SQL Files', extensions: ['sql'] }],
+        properties: ['openFile']
+      })
+
+      if (result.canceled || !result.filePaths.length) return { success: false, canceled: true }
+      const filePath = result.filePaths[0]
+
+      const util = require('util')
+      const exec = util.promisify(require('child_process').exec)
+      
+      const db = cfg.database
+      const restoreCmd = `mysql -h ${databaseHost(db.host)} -P ${db.port} -u ${db.username} ${db.password ? `-p"${db.password}"` : ''} ${db.database} < "${filePath}"`
+      
+      await exec(restoreCmd)
+      return { success: true }
+    } catch (err) {
+      log(`Restore failed: ${err.stack || err.message}`)
+      return { success: false, error: err.message }
+    }
+  })
+
+  ipcMain.handle('config:reset', async () => {
+    try {
+      if (configExists()) {
+        fs.unlinkSync(getConfigPath())
+      }
+      app.relaunch()
+      app.exit(0)
+      return { success: true }
+    } catch (err) {
+      log(`Config reset failed: ${err.stack || err.message}`)
+      return { success: false, error: err.message }
+    }
+  })
+
   ipcMain.handle('setup:complete', async (_e, cfg) => {
     try {
       if (!cfg.jwtSecret) {
@@ -226,15 +587,11 @@ app.on('ready', async () => {
 
       if (mainWindow) mainWindow.close()
 
-      startBackend(cfg.database, cfg.jwtSecret)
-      startFrontend()
-
-      await new Promise(r => setTimeout(r, 3000))
-
-      createMainWindow()
+      await startApplication(cfg)
 
       return { success: true }
     } catch (err) {
+      log(`Setup completion failed: ${err.stack || err.message}`)
       return { success: false, error: err.message }
     }
   })
@@ -243,11 +600,14 @@ app.on('ready', async () => {
   if (!configExists()) {
     createSetupWindow()
   } else {
-    const cfg = loadConfig()
-    startBackend(cfg.database, cfg.jwtSecret)
-    startFrontend()
-    await new Promise(r => setTimeout(r, 3000))
-    createMainWindow()
+    try {
+      const cfg = loadConfig()
+      await startApplication(cfg)
+    } catch (err) {
+      log(`Startup failed: ${err.stack || err.message}`)
+      dialog.showErrorBox('Retail CRM startup failed', `${err.message}\n\nLog file:\n${getLogPath()}`)
+      app.quit()
+    }
   }
 })
 

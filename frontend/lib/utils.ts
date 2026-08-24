@@ -1,5 +1,6 @@
 import { type ClassValue, clsx } from 'clsx'
 import { twMerge } from 'tailwind-merge'
+import { getApiUrl } from './runtime-config'
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -45,7 +46,7 @@ export function truncate(str: string, length: number): string {
 export function resolveImageUrl(url?: string | null): string | undefined {
   if (!url) return undefined
   if (/^https?:\/\//i.test(url)) return url
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
+  const apiUrl = getApiUrl()
   const origin = apiUrl.replace(/\/api\/?$/, '')
   return `${origin}${url}`
 }

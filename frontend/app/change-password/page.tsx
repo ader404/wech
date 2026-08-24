@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { Eye, EyeOff, Lock, AlertCircle, CheckCircle } from 'lucide-react';
+import { getApiUrl } from '@/lib/runtime-config';
 
 export default function ChangePasswordPage() {
   const router = useRouter();
@@ -45,7 +46,7 @@ export default function ChangePasswordPage() {
 
     try {
       const token = localStorage.getItem('access_token');
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'}/auth/change-password`, {
+      const response = await fetch(`${getApiUrl()}/auth/change-password`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -1,8 +1,7 @@
 'use client';
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+import { getApiUrl } from '@/lib/runtime-config';
 
 const getAuthHeaders = () => {
   const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
@@ -14,7 +13,8 @@ const getAuthHeaders = () => {
 
 // Generic fetch function
 async function fetchData<T>(endpoint: string): Promise<T> {
-  const response = await fetch(`${API_URL}${endpoint}`, {
+  const apiUrl = getApiUrl();
+  const response = await fetch(`${apiUrl}${endpoint}`, {
     headers: getAuthHeaders(),
     credentials: 'include',
   });
@@ -152,7 +152,7 @@ export function useCreateCustomer() {
 
   return useMutation({
     mutationFn: async (data: any) => {
-      const response = await fetch(`${API_URL}/customers`, {
+      const response = await fetch(`${getApiUrl()}/customers`, {
         method: 'POST',
         headers: getAuthHeaders(),
         credentials: 'include',
@@ -176,7 +176,7 @@ export function useUpdateCustomer() {
 
   return useMutation({
     mutationFn: async ({ id, data }: { id: string; data: any }) => {
-      const response = await fetch(`${API_URL}/customers/${id}`, {
+      const response = await fetch(`${getApiUrl()}/customers/${id}`, {
         method: 'PATCH',
         headers: getAuthHeaders(),
         credentials: 'include',
@@ -201,7 +201,7 @@ export function useDeleteCustomer() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const response = await fetch(`${API_URL}/customers/${id}`, {
+      const response = await fetch(`${getApiUrl()}/customers/${id}`, {
         method: 'DELETE',
         headers: getAuthHeaders(),
         credentials: 'include',
