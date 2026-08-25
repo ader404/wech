@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateSaleDto } from './dto/create-sale.dto';
 import { AddPaymentDto } from './dto/add-payment.dto';
@@ -302,23 +302,25 @@ export class SalesService {
   }
 
   async addPayment(dto: AddPaymentDto) {
-    const sale = await this.prisma.sale.findUniqueOrThrow({
-      where: { id: dto.saleId },
-      include: { loan: true },  // Include linked loan
-    });
-
-    if (sale.paymentStatus === 'PAID') {
-      throw new BadRequestException('Sale is already fully paid');
-    }
-
-    const newAmountPaid = Number(sale.amountPaid) + dto.amount;
-    const newAmountDue = Number(sale.amountDue) - dto.amount;
-
-    if (newAmountDue < 0) {
-      throw new BadRequestException('Payment amount exceeds remaining balance');
-    }
-
     return this.prisma.$transaction(async (tx) => {
+      // Read balances INSIDE the transaction so concurrent payments serialize
+      // on the row lock instead of computing from a stale snapshot.
+      const sale = await tx.sale.findUniqueOrThrow({
+        where: { id: dto.saleId },
+        include: { loan: true },
+      });
+
+      if (sale.paymentStatus === 'PAID') {
+        throw new BadRequestException('Sale is already fully paid');
+      }
+
+      const newAmountPaid = Number(sale.amountPaid) + dto.amount;
+      const newAmountDue = Number(sale.amountDue) - dto.amount;
+
+      if (newAmountDue < 0) {
+        throw new BadRequestException('Payment amount exceeds remaining balance');
+      }
+
       // Create payment record
       await tx.payment.create({
         data: {
@@ -328,15 +330,24 @@ export class SalesService {
         },
       });
 
-      // Update sale
-      const paymentStatus = newAmountDue <= 0 ? 'PAID' : 'PARTIALLY_PAID';
-      const updatedSale = await tx.sale.update({
-        where: { id: dto.saleId },
+      // Optimistic concurrency check: only update if amountPaid is unchanged
+      const updatedCount = await tx.sale.updateMany({
+        where: { id: dto.saleId, amountPaid: sale.amountPaid },
         data: {
           amountPaid: newAmountPaid,
           amountDue: newAmountDue,
-          paymentStatus: paymentStatus as any,
+          paymentStatus: (newAmountDue <= 0 ? 'PAID' : 'PARTIALLY_PAID') as any,
         },
+      });
+
+      if (updatedCount.count === 0) {
+        throw new ConflictException(
+          'Sale was modified concurrently, please retry',
+        );
+      }
+
+      const updatedSale = await tx.sale.findUniqueOrThrow({
+        where: { id: dto.saleId },
         include: SALE_INCLUDE,
       });
 
@@ -356,12 +367,12 @@ export class SalesService {
         const newLoanAmountPaid = Number(sale.loan.amountPaid) + dto.amount;
         const newLoanAmountDue = Number(sale.loan.amountDue) - dto.amount;
 
-        await tx.loan.update({
-          where: { id: sale.loan.id },
+        await tx.loan.updateMany({
+          where: { id: sale.loan.id, amountPaid: sale.loan.amountPaid },
           data: {
             amountPaid: newLoanAmountPaid,
             amountDue: newLoanAmountDue,
-            status: newLoanAmountDue <= 0 ? 'COMPLETED' : 'ACTIVE',
+            status: (newLoanAmountDue <= 0 ? 'COMPLETED' : 'ACTIVE') as any,
           }
         });
 

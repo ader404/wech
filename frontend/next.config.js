@@ -1,5 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Produces a minimal, self-contained Node server for Electron packaging.
+  output: 'standalone',
   // Disable Next.js telemetry for offline/desktop use
   experimental: {},
   images: {

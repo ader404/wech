@@ -76,12 +76,16 @@ The installer will be approximately **200-400 MB** and includes:
 - Node.js dependencies
 - Setup wizard for first-time configuration
 
+The installed app does not run `npm install` or require Node.js on the target
+machine. Electron starts the bundled backend and Next.js standalone server
+using its embedded Node runtime.
+
 ## First Run Experience
 
 When a user installs and runs the application for the first time:
 
 ### Step 1: Database Configuration
-- Enter MySQL host (default: localhost)
+- Enter MySQL host (default: 127.0.0.1)
 - Enter MySQL port (default: 3306)
 - Enter database name (default: retail_crm)
 - Enter MySQL username (default: root)

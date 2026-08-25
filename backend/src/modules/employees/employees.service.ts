@@ -8,6 +8,18 @@ export class EmployeesService {
   findAll() {
     return this.prisma.user.findMany({
       where: { isActive: true },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        phone: true,
+        isActive: true,
+        locale: true,
+        lastLoginAt: true,
+        createdAt: true,
+        updatedAt: true,
+      },
     });
   }
 }

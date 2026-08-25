@@ -10,6 +10,14 @@ export class AuditService {
   }
 
   findAll() {
-    return this.prisma.auditLog.findMany({ include: { user: true }, orderBy: { createdAt: 'desc' }, take: 100 });
+    return this.prisma.auditLog.findMany({
+      include: {
+        user: {
+          select: { id: true, name: true, email: true, role: true },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+    });
   }
 }

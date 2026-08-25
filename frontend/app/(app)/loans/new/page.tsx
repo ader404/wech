@@ -43,7 +43,7 @@ export default function NewLoanPage() {
     queryKey: ['customers-all'],
     queryFn: async () => {
       try {
-        console.log('Fetching customers from:', `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'}/customers`)
+        console.log('Fetching customers from:', `${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:3001/api'}/customers`)
         const response = await api.get('/customers', { params: { limit: 100 } })
         console.log('Customers response:', response.data)
         return response.data
@@ -61,7 +61,7 @@ export default function NewLoanPage() {
     queryKey: ['suppliers-all'],
     queryFn: async () => {
       try {
-        console.log('Fetching suppliers from:', `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'}/suppliers`)
+        console.log('Fetching suppliers from:', `${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:3001/api'}/suppliers`)
         const response = await api.get('/suppliers', { params: { limit: 100 } })
         console.log('Suppliers response:', response.data)
         return response.data

@@ -19,6 +19,14 @@ Double-click: BUILD.bat
 ```bash
 cd desktop-app
 npm install
+cd ../backend
+npm install
+npx prisma generate
+npm run build
+cd ../frontend
+npm install
+npm run build
+cd ../desktop-app
 npm run dist:win
 ```
 
@@ -41,7 +49,7 @@ This will:
 
 **Step 1: Database Configuration**
 ```
-Host: localhost
+Host: 127.0.0.1
 Port: 3306
 Database: retail_crm
 Username: root
@@ -134,6 +142,11 @@ npm run build
 
 **"No icon" warning**
 → Build still works, just won't have a custom icon
+
+**"Cannot find backend/frontend build resources"**
+
+Build the backend and frontend first. The installer deliberately packages their
+production outputs rather than source folders or runtime `npm install` steps.
 
 ## 📊 Build Size
 
