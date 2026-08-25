@@ -5,23 +5,32 @@ node_modules/
 
 # Testing
 coverage/
-*.log
 
 # Production builds
 dist/
 build/
 out/
 .next/
+next-env.d.ts
+*.tsbuildinfo
 
-# Environment variables
+# Environment variables & secrets
 .env
-.env.local
-.env.production.local
-.env.development.local
-.env.test.local
+.env.*
+!.env.example
+WORKING_CREDENTIALS.txt
+backend-log.txt
+*.backup
 
-# Desktop app output
+# Desktop app output & packaging artifacts
 desktop-app/dist/
+squashfs-root*/
+*.AppImage
+*.AppImage.sig
+*.exe
+*.nsis.7z
+builder-debug.yml
+builder-effective-config.yaml
 
 # IDE
 .vscode/
@@ -47,12 +56,12 @@ pnpm-debug.log*
 # Prisma
 backend/prisma/migrations/*_init/
 !backend/prisma/migrations/.gitkeep
+backend/prisma/*.OLD/
 
-# Uploads
+# Uploads / runtime data
 backend/uploads/
 backend/blob_storage/
-
-# User data (encrypted config, user uploads)
+uploads/
 *.enc
 
 # Temporary files
@@ -60,11 +69,11 @@ backend/blob_storage/
 *.temp
 .cache/
 
-# MySQL dumps
+# Database dumps
 *.sql.gz
 *.sql
 
-# Package manager locks (optional - uncomment if you want to ignore them)
+# Package manager locks (uncomment to stop tracking)
 # package-lock.json
 # yarn.lock
 # pnpm-lock.yaml

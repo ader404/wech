@@ -4,12 +4,19 @@ import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger'
 import { NestExpressApplication } from '@nestjs/platform-express'
 import { AppModule } from './app.module'
 import { getUploadsDir } from './common/uploads-path'
+import { AllExceptionsFilter } from './common/filters/all-exceptions.filter'
 import helmet from 'helmet'
 
 
 async function bootstrap() {
+  if (!process.env.JWT_SECRET) {
+    throw new Error('JWT_SECRET environment variable is required')
+  }
+
   const app = await NestFactory.create<NestExpressApplication>(AppModule)
   const logger = new Logger('Bootstrap')
+
+  app.useGlobalFilters(new AllExceptionsFilter())
 
 
   // Security headers. This backend only ever serves the local desktop app over
@@ -51,6 +58,8 @@ async function bootstrap() {
   )
 
   app.setGlobalPrefix('api')
+
+  app.enableShutdownHooks()
 
   if (process.env.ENABLE_SWAGGER !== 'false') {
     const config = new DocumentBuilder()

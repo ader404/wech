@@ -23,6 +23,7 @@ let mainWindow = null
 let backendProcess = null
 let frontendProcess = null
 let configPath = null
+let startingUp = false
 let backendPort = 3001
 let frontendPort = 3000
 
@@ -93,6 +94,22 @@ function pipeProcessLogs(name, proc) {
   })
 }
 
+// Rejects if the spawned process dies before the startup timeout elapses, so a
+// crashed backend/frontend surfaces as an error dialog instead of an
+// indefinitely blank window.
+function watchEarlyExit(name, proc, reject, timeoutMs) {
+  const timer = setTimeout(() => {
+    proc.removeListener('exit', onExit)
+  }, timeoutMs)
+  function onExit(code, signal) {
+    clearTimeout(timer)
+    reject(new Error(
+      `${name} exited during startup (code ${code}, signal ${signal || 'none'}). See ${getLogPath()}`
+    ))
+  }
+  proc.once('exit', onExit)
+}
+
 function isPortAvailable(port, host = '127.0.0.1') {
   return new Promise(resolve => {
     const server = net.createServer()
@@ -141,17 +158,28 @@ function waitForHttp(url, label, timeoutMs = 45000) {
   return new Promise((resolve, reject) => {
     const attempt = () => {
       const req = http.get(url, res => {
-        res.resume()
-        resolve()
+        // Any response below 500 means a server is genuinely answering.
+        // 5xx (or an empty/aborted reply) is treated as not-ready so a
+        // half-started server never yields a blank window.
+        if (res.statusCode && res.statusCode < 500) {
+          res.resume()
+          resolve()
+        } else {
+          res.resume()
+          retryOrFail(`${label} responded with HTTP ${res.statusCode}`)
+        }
       })
 
-      req.once('error', () => {
+      const retryOrFail = reason => {
+        req.destroy()
         if (Date.now() - started > timeoutMs) {
-          reject(new Error(`${label} did not become reachable at ${url}. See ${getLogPath()}`))
+          reject(new Error(`${label} was not reachable at ${url} (${reason}). See ${getLogPath()}`))
         } else {
           setTimeout(attempt, 500)
         }
-      })
+      }
+
+      req.once('error', err => retryOrFail(err.code || err.message))
       req.setTimeout(5000, () => req.destroy())
     }
 
@@ -179,12 +207,19 @@ function createSetupWindow() {
   mainWindow = new BrowserWindow({
     width: 700,
     height: 600,
+    backgroundColor: '#0B0E14',
+    show: false,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: false,
       contextIsolation: true,
     },
     autoHideMenuBar: true,
+  })
+  mainWindow.once('ready-to-show', () => mainWindow.show())
+  mainWindow.webContents.on('did-fail-load', (_e, code, desc, url) => {
+    log(`Setup window failed to load ${url}: ${code} ${desc}`)
+    dialog.showErrorBox('Retail CRM setup failed to load', `${code} ${desc}\n\nLog file:\n${getLogPath()}`)
   })
   mainWindow.loadFile(path.join(__dirname, 'setup.html'))
 }
@@ -193,6 +228,8 @@ function createMainWindow() {
   mainWindow = new BrowserWindow({
     width: 1400,
     height: 900,
+    backgroundColor: '#0B0E14',
+    show: false,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -203,11 +240,16 @@ function createMainWindow() {
     },
     autoHideMenuBar: true,
   })
+  mainWindow.once('ready-to-show', () => mainWindow.show())
+  mainWindow.webContents.on('did-fail-load', (_e, code, desc, url) => {
+    log(`Main window failed to load ${url}: ${code} ${desc}`)
+    dialog.showErrorBox('Retail CRM failed to load', `${code} ${desc}\n\nLog file:\n${getLogPath()}`)
+  })
   const apiUrl = encodeURIComponent(`http://127.0.0.1:${backendPort}/api`)
   mainWindow.loadURL(`http://127.0.0.1:${frontendPort}/?apiUrl=${apiUrl}`)
 }
 
-async function startBackend(db, jwt) {
+async function startBackend(db, jwt, onEarlyExit) {
   const dbUrl = databaseUrl(db)
   backendPort = await findAvailablePort(Number(db.backendPort) || 3001)
 
@@ -236,10 +278,11 @@ async function startBackend(db, jwt) {
   })
 
   pipeProcessLogs('Backend', backendProcess)
+  if (onEarlyExit) watchEarlyExit('Backend', backendProcess, onEarlyExit, 30000)
   return backendPort
 }
 
-async function startFrontend() {
+async function startFrontend(onEarlyExit) {
   frontendPort = await findAvailablePort(Number(process.env.FRONTEND_PORT) || 3000)
 
   // Determine frontend path based on whether we're packaged or in development
@@ -263,16 +306,38 @@ async function startFrontend() {
   })
 
   pipeProcessLogs('Frontend', frontendProcess)
+  if (onEarlyExit) watchEarlyExit('Frontend', frontendProcess, onEarlyExit, 45000)
   return frontendPort
 }
 
 async function startApplication(cfg) {
-  frontendPort = await findAvailablePort(Number(cfg.frontendPort) || 3000)
-  await startBackend(cfg.database, cfg.jwtSecret)
-  await startFrontend()
-  await waitForTcp(backendPort, 'Backend API')
-  await waitForHttp(`http://127.0.0.1:${frontendPort}`, 'Frontend')
-  createMainWindow()
+  startingUp = true
+  try {
+    let reportStartupFailure
+    const startupFailed = new Promise((_, reject) => {
+      reportStartupFailure = reject
+    })
+
+    frontendPort = await findAvailablePort(Number(cfg.frontendPort) || 3000)
+    await startBackend(cfg.database, cfg.jwtSecret, err => {
+      log(`Startup aborted: ${err.message}`)
+      reportStartupFailure(err)
+    })
+    await startFrontend(err => {
+      log(`Startup aborted: ${err.message}`)
+      reportStartupFailure(err)
+    })
+    await Promise.race([
+      (async () => {
+        await waitForTcp(backendPort, 'Backend API')
+        await waitForHttp(`http://127.0.0.1:${frontendPort}`, 'Frontend')
+      })(),
+      startupFailed,
+    ])
+    createMainWindow()
+  } finally {
+    startingUp = false
+  }
 }
 
 app.on('ready', async () => {
@@ -612,6 +677,10 @@ app.on('ready', async () => {
 })
 
 app.on('window-all-closed', () => {
+  // While transitioning from the setup window to the main window there is a
+  // moment with zero open windows; quitting here would kill the backend and
+  // frontend processes that were just started for the main window.
+  if (startingUp) return
   if (backendProcess) backendProcess.kill()
   if (frontendProcess) frontendProcess.kill()
   app.quit()
