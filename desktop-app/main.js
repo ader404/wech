@@ -205,8 +205,8 @@ function configExists() {
 
 function createSetupWindow() {
   mainWindow = new BrowserWindow({
-    width: 700,
-    height: 600,
+    width: 1000,
+    height: 660,
     backgroundColor: '#0B0E14',
     show: false,
     webPreferences: {
@@ -453,6 +453,81 @@ app.on('ready', async () => {
   Menu.setApplicationMenu(menu)
 
   // Register IPC handlers
+  ipcMain.handle('system:preflight', async (event) => {
+    const send = r => { try { event.sender.send('preflight:update', r) } catch {} }
+    const results = []
+    const add = (id, label, status, detail) => {
+      const r = { id, label, status, detail }
+      results.push(r)
+      send(r)
+      return r
+    }
+
+    // 1. Runtime
+    add('runtime', 'Application runtime', 'pass',
+      `Electron ${process.versions.electron} · Node ${process.versions.node}`)
+
+    // 2. Bundled components
+    const backendPath = app.isPackaged
+      ? path.join(process.resourcesPath, 'backend')
+      : path.join(__dirname, '../backend')
+    const frontendPath = app.isPackaged
+      ? path.join(process.resourcesPath, 'frontend')
+      : path.join(__dirname, '../frontend')
+    const required = [
+      ['API server', path.join(backendPath, 'src', 'main.js')],
+      ['Web server', path.join(frontendPath, 'server.js')],
+    ]
+    const missing = required.filter(([, p]) => !fs.existsSync(p))
+    add('components', 'Application components',
+      missing.length ? 'fail' : 'pass',
+      missing.length
+        ? `Missing: ${missing.map(([n]) => n).join(', ')}`
+        : 'API server and web server bundles found')
+
+    // 3. Database schema (migrations bundled)
+    const migrationsDir = path.join(backendPath, 'prisma', 'migrations')
+    let hasMigrations = false
+    try {
+      hasMigrations = fs.readdirSync(migrationsDir).some(d =>
+        fs.existsSync(path.join(migrationsDir, d, 'migration.sql')))
+    } catch {}
+    add('schema', 'Database schema files',
+      hasMigrations ? 'pass' : 'fail',
+      hasMigrations ? 'Migration bundle found' : 'No migrations found — installation cannot create tables')
+
+    // 4. Database driver
+    let driverOk = true, driverErr = ''
+    try { require('mysql2/promise') } catch (err) { driverOk = false; driverErr = err.message }
+    add('dbdriver', 'Database driver',
+      driverOk ? 'pass' : 'fail',
+      driverOk ? 'mysql2 loaded successfully' : driverErr)
+
+    // 5. Writable data directory
+    let dirOk = true, dirErr = ''
+    const dataDir = app.getPath('userData')
+    try {
+      fs.mkdirSync(path.join(dataDir, 'uploads'), { recursive: true })
+      fs.accessSync(dataDir, fs.constants.W_OK)
+    } catch (err) { dirOk = false; dirErr = err.message }
+    add('datadir', 'Data directory',
+      dirOk ? 'pass' : 'fail',
+      dirOk ? `${dataDir} (writable)` : dirErr)
+
+    // 6. Network ports
+    let apiPort = null, webPort = null
+    try { apiPort = await findAvailablePort(3001) } catch {}
+    try { webPort = await findAvailablePort(3000) } catch {}
+    const portsOk = Boolean(apiPort && webPort)
+    add('ports', 'Network ports',
+      portsOk ? 'pass' : 'fail',
+      portsOk
+        ? `API :${apiPort} · Web :${webPort} (auto-selected)`
+        : 'No free ports in range 3000–3019')
+
+    return results
+  })
+
   ipcMain.handle('database:test', async (_e, cfg) => {
     try {
       const mysql = require('mysql2/promise')
