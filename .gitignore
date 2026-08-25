@@ -69,9 +69,10 @@ uploads/
 *.temp
 .cache/
 
-# Database dumps
+# Database dumps (but never ignore Prisma migration SQL)
 *.sql.gz
 *.sql
+!backend/prisma/migrations/**
 
 # Package manager locks (uncomment to stop tracking)
 # package-lock.json
